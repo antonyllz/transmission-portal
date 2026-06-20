@@ -2,33 +2,6 @@
    DEMANDS — note board
    ═══════════════════ */
 
-/* ── TOPBAR DEMAND CHIPS ── */
-.demand-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 12px 4px 8px; border-radius: 980px;
-  font-size: 11px; font-weight: 700; white-space: nowrap;
-  cursor: pointer; position: relative; overflow: hidden;
-  transition: transform .15s, opacity .15s; letter-spacing: .2px;
-}
-.demand-chip:hover { transform: translateY(-1px); }
-.demand-chip:active { transform: scale(.96); }
-@keyframes chip-in { from { opacity: 0; transform: translateY(-8px) scale(.9); } to { opacity: 1; transform: none; } }
-.chip-urgent { background: rgba(239,68,68,.18); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
-.chip-media  { background: rgba(249,115,22,.16); color: #fdba74; border: 1px solid rgba(249,115,22,.28); }
-.chip-baixa  { background: rgba(99,200,255,.13); color: #bae6fd; border: 1px solid rgba(99,200,255,.22); }
-
-.chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; }
-.chip-dot::after {
-  content: ''; position: absolute; inset: -3px; border-radius: 50%;
-  background: inherit; opacity: .4; animation: chip-ping 1.8s ease-in-out infinite;
-}
-@keyframes chip-ping {
-  0%   { transform: scale(1); opacity: .4; }
-  70%  { transform: scale(2.2); opacity: 0; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-.chip-time { font-size: 10.5px; font-weight: 700; letter-spacing: .2px; }
-
 /* ── NOTE BOARD GRID ── */
 .notes-grid {
   display: grid;
@@ -52,13 +25,45 @@
 .note-desc   { font-size: 13px; font-weight: 500; color: #1d1d1f; line-height: 1.45; flex: 1; }
 .note-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
 .note-timer  { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; transition: color .5s; }
-.note-del    {
-  width: 24px; height: 24px; border-radius: 50%; border: none;
-  background: transparent; display: flex; align-items: center; justify-content: center;
-  color: #d0d0d5; cursor: pointer; transition: all .15s; flex-shrink: 0;
-}
-.note-del:hover { background: #fdecea; color: #c0392b; }
 .note-prio-badge { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; opacity: .65; }
+
+/* ── EXPANDABLE DEMAND CARD ── */
+.note-demand { cursor: pointer; }
+.note-chevron { display: flex; color: #c4c4c9; transition: transform .28s cubic-bezier(.4,0,.2,1); }
+.note-card.expanded .note-chevron { transform: rotate(180deg); }
+.note-card.expanded { box-shadow: 0 10px 28px rgba(0,0,0,.14); transform: translateY(-3px); }
+
+.note-actions {
+  display: flex; flex-direction: column; gap: 6px; overflow: hidden;
+  max-height: 0; opacity: 0; margin-top: 0;
+  transition: max-height .3s cubic-bezier(.4,0,.2,1), opacity .22s ease, margin-top .3s cubic-bezier(.4,0,.2,1);
+}
+.note-card.expanded .note-actions { max-height: 96px; opacity: 1; margin-top: 11px; }
+.note-act {
+  width: 100%; padding: 8px 10px; border-radius: 9px; border: none;
+  font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap; transition: background .15s, color .15s, transform .12s;
+}
+.note-act:active { transform: scale(.94); }
+.note-act-done { background: #e7f7ed; color: #16a34a; }
+.note-act-done:hover { background: #16a34a; color: #fff; }
+.note-act-del  { background: #fdecea; color: #dc2626; }
+.note-act-del:hover  { background: #dc2626; color: #fff; }
+
+/* ── REMOVE / FINISH FEEDBACK ── */
+.note-removing {
+  opacity: 0 !important; transform: scale(.82) !important; pointer-events: none;
+  transition: opacity .24s ease, transform .24s ease;
+}
+.note-done-overlay {
+  position: absolute; inset: 0; background: #16a34a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 4; opacity: 0; animation: note-done-in .24s ease forwards;
+}
+.note-done-overlay svg { width: 40px; height: 40px; transform: scale(0); animation: note-done-pop .44s cubic-bezier(.34,1.6,.64,1) .06s forwards; }
+@keyframes note-done-in  { to { opacity: 1; } }
+@keyframes note-done-pop { to { transform: scale(1); } }
 
 /* ── ADD NOTE CARD ── */
 .note-add {

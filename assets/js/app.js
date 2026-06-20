@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', function() {
   updateBadge();
   initClientSkeletons();
   renderNoteBoardWithSkeleton();
-  renderDemandChips();
 
   /* ── Tick every second ── */
   setInterval(function() {

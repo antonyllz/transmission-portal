@@ -3,9 +3,9 @@
    ═══════════════════════════════ */
 
 var PRIO = {
-  urgente: { label: 'Urgente', dur: 6 * 3600,      bar: '#dc2626', cls: 'chip-urgent' },
-  media:   { label: 'M\u00e9dia',  dur: 24 * 3600,     bar: '#ea580c', cls: 'chip-media'  },
-  baixa:   { label: 'Baixa',   dur: 7 * 24 * 3600, bar: '#2563eb', cls: 'chip-baixa'  }
+  urgente: { label: 'Urgente', dur: 6 * 3600,      bar: '#dc2626' },
+  media:   { label: 'M\u00e9dia',  dur: 24 * 3600,     bar: '#ea580c' },
+  baixa:   { label: 'Baixa',   dur: 7 * 24 * 3600, bar: '#2563eb' }
 };
 
 var nadd_prio = 'urgente';
@@ -83,7 +83,6 @@ function saveNoteAdd(e) {
 
   cancelAddNote(null);
   renderNoteBoard();
-  renderDemandChips();
 }
 
 /* ── NOTE BOARD RENDER ── */
@@ -105,7 +104,9 @@ function renderNoteBoard() {
 
     var card = document.createElement('div');
     card.className = 'note-card note-demand note-pop';
+    card.dataset.id = d.id;
     card.style.animationDelay = (i * 0.06) + 's';
+    card.onclick = function() { card.classList.toggle('expanded'); };
     card.innerHTML =
         '<div class="note-stripe" style="background:' + p.bar + '"></div>'
       + '<div class="note-body">'
@@ -115,10 +116,18 @@ function renderNoteBoard() {
       +     '<span class="note-timer" id="ntimer-' + d.id + '" style="color:' + tc + '">'
       +       fmtCountdown(rem)
       +     '</span>'
-      +     '<button class="note-del" data-id="' + esc(d.id) + '" onclick="deleteNote(this.dataset.id)" title="Remover">'
-      +       '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
-      +         '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
-      +       '</svg>'
+      +     '<span class="note-chevron">'
+      +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+      +     '</span>'
+      +   '</div>'
+      +   '<div class="note-actions">'
+      +     '<button class="note-act note-act-done" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); finishDemand(this.dataset.id)">'
+      +       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      +       'Demanda finalizada'
+      +     '</button>'
+      +     '<button class="note-act note-act-del" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); deleteNote(this.dataset.id)">'
+      +       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      +       'Excluir demanda'
       +     '</button>'
       +   '</div>'
       + '</div>';
@@ -126,73 +135,31 @@ function renderNoteBoard() {
   });
 }
 
-/* ── DELETE NOTE ── */
-function deleteNote(id) {
-  var cards = document.querySelectorAll('.note-demand');
-  cards.forEach(function(c) {
-    if (c.querySelector('[data-id="' + id + '"]')) {
-      c.style.transition = 'opacity .22s ease, transform .22s ease';
-      c.style.opacity    = '0';
-      c.style.transform  = 'scale(.82)';
-      setTimeout(function() {
-        dmdSave(dmdGetAll().filter(function(d) { return d.id !== id; }));
-        c.remove();
-        renderDemandChips();
-        if (typeof notifOpen !== 'undefined' && notifOpen) renderNotifDemands();
-      }, 220);
-    }
-  });
-}
+/* ── REMOVE / FINISH NOTE ── */
+function dmdRemove(id, done) {
+  var card   = document.querySelector('.note-demand[data-id="' + id + '"]');
+  var commit = function() {
+    dmdSave(dmdGetAll().filter(function(d) { return d.id !== id; }));
+    if (card) card.remove();
+    if (typeof notifOpen !== 'undefined' && notifOpen) renderNotifDemands();
+  };
+  if (!card) { commit(); return; }
 
-/* ── TOPBAR CHIPS ── */
-function buildChipSVG(pct, color) {
-  var r = 8, circ = 2 * Math.PI * r;
-  var dash = pct * circ, gap = circ - dash;
-  return '<svg width="22" height="22" viewBox="0 0 22 22">'
-    + '<circle cx="11" cy="11" r="' + r + '" stroke="rgba(255,255,255,.15)" stroke-width="2.5"/>'
-    + '<circle cx="11" cy="11" r="' + r + '" stroke="' + color + '" stroke-width="2.5"'
-    + ' stroke-dasharray="' + dash + ' ' + gap + '"'
-    + ' stroke-linecap="round" transform="rotate(-90 11 11)"/>'
-    + '</svg>';
-}
-
-function renderDemandChips() {
-  var el = document.getElementById('tb-demands');
-  if (!el) return;
-  var all  = dmdGetAll();
-  var now  = Date.now();
-  var order = { urgente: 0, media: 1, baixa: 2 };
-
-  var active = all.map(function(d) {
-    var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
-    return { d: d, rem: Math.max(0, d.duration - elapsed) };
-  }).sort(function(a, b) {
-    return (order[a.d.priority] || 2) - (order[b.d.priority] || 2);
-  });
-
-  if (!active.length) { el.innerHTML = ''; return; }
-
-  var h = '';
-  active.slice(0, 2).forEach(function(item, i) {
-    var p        = PRIO[item.d.priority] || PRIO.baixa;
-    var pct      = item.rem <= 0 ? 0 : Math.min(1, item.rem / item.d.duration);
-    var critical = item.rem > 0 && item.rem < 1800;
-    var dotColor = item.rem <= 0 ? 'rgba(255,255,255,.3)' : critical ? '#fca5a5' : p.bar;
-    var ringColor= item.rem <= 0 ? 'rgba(255,255,255,.2)' : critical ? '#fca5a5' : 'rgba(255,255,255,.7)';
-    var anim     = 'animation:chip-in .35s cubic-bezier(.34,1.2,.64,1) ' + (i * 0.08) + 's both;';
-
-    h += '<span class="demand-chip ' + p.cls + '" style="' + anim + '"'
-       + ' data-pg="pg-home" onclick="showPage(this.dataset.pg)" title="' + esc(item.d.description) + '">'
-       + '<span class="chip-dot" style="background:' + dotColor + '"></span>'
-       + buildChipSVG(pct, ringColor)
-       + '<span class="chip-time">' + fmtCountdown(item.rem) + '</span>'
-       + '</span>';
-  });
-  if (active.length > 2) {
-    h += '<span style="font-size:11px;color:rgba(255,255,255,.5);font-weight:700;padding:0 4px;">+' + (active.length - 2) + '</span>';
+  if (done) {
+    var ov = document.createElement('div');
+    ov.className = 'note-done-overlay';
+    ov.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" '
+      + 'stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    card.appendChild(ov);
+    setTimeout(function() { card.classList.add('note-removing'); }, 520);
+    setTimeout(commit, 760);
+  } else {
+    card.classList.add('note-removing');
+    setTimeout(commit, 240);
   }
-  el.innerHTML = h;
 }
+function deleteNote(id)   { dmdRemove(id, false); }
+function finishDemand(id) { dmdRemove(id, true); }
 
 /* ── TICK DEMAND TIMERS ── */
 function tickNoteTimers() {
@@ -207,5 +174,4 @@ function tickNoteTimers() {
     el.textContent  = fmtCountdown(rem);
     el.style.color  = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : p.bar);
   });
-  renderDemandChips();
 }
