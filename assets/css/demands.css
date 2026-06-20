@@ -1,0 +1,153 @@
+/* ═══════════════════
+   DEMANDS — note board
+   ═══════════════════ */
+
+/* ── TOPBAR DEMAND CHIPS ── */
+.demand-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px 4px 8px; border-radius: 980px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: transform .15s, opacity .15s; letter-spacing: .2px;
+}
+.demand-chip:hover { transform: translateY(-1px); }
+.demand-chip:active { transform: scale(.96); }
+@keyframes chip-in { from { opacity: 0; transform: translateY(-8px) scale(.9); } to { opacity: 1; transform: none; } }
+.chip-urgent { background: rgba(239,68,68,.18); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+.chip-media  { background: rgba(249,115,22,.16); color: #fdba74; border: 1px solid rgba(249,115,22,.28); }
+.chip-baixa  { background: rgba(99,200,255,.13); color: #bae6fd; border: 1px solid rgba(99,200,255,.22); }
+
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; }
+.chip-dot::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  background: inherit; opacity: .4; animation: chip-ping 1.8s ease-in-out infinite;
+}
+@keyframes chip-ping {
+  0%   { transform: scale(1); opacity: .4; }
+  70%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.chip-time { font-size: 10.5px; font-weight: 700; letter-spacing: .2px; }
+
+/* ── NOTE BOARD GRID ── */
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── BASE NOTE CARD ── */
+.note-card {
+  border-radius: 16px; background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  overflow: hidden; display: flex; flex-direction: column;
+  min-height: 148px;
+  transition: transform .2s cubic-bezier(.34,1.2,.64,1), box-shadow .2s;
+  position: relative;
+}
+.note-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.note-stripe { height: 5px; width: 100%; flex-shrink: 0; }
+.note-body   { flex: 1; padding: 13px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.note-desc   { font-size: 13px; font-weight: 500; color: #1d1d1f; line-height: 1.45; flex: 1; }
+.note-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.note-timer  { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; transition: color .5s; }
+.note-del    {
+  width: 24px; height: 24px; border-radius: 50%; border: none;
+  background: transparent; display: flex; align-items: center; justify-content: center;
+  color: #d0d0d5; cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.note-del:hover { background: #fdecea; color: #c0392b; }
+.note-prio-badge { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; opacity: .65; }
+
+/* ── ADD NOTE CARD ── */
+.note-add {
+  border: 2px dashed rgba(0,0,0,.13); box-shadow: none;
+  background: transparent; cursor: pointer;
+  align-items: center; justify-content: center; gap: 10px;
+  min-height: 148px;
+  transition: border-color .2s, background .2s, transform .2s cubic-bezier(.34,1.2,.64,1), box-shadow .2s;
+}
+.note-add:hover {
+  border-color: #0649fc; background: #f5f8ff;
+  transform: translateY(-3px); box-shadow: 0 8px 24px rgba(6,73,252,.1);
+}
+.note-add:hover .nadd-icon { background: #0649fc; border-color: #0649fc; }
+.note-add:hover .nadd-icon svg { stroke: #fff; }
+.note-add:hover .nadd-lbl  { color: #0649fc; }
+.note-add:active { transform: scale(.97); }
+.nadd-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.12); background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s cubic-bezier(.34,1.2,.64,1);
+}
+.nadd-icon svg { stroke: #aeaeb2; transition: stroke .2s; }
+.nadd-lbl { font-size: 12.5px; font-weight: 500; color: #aeaeb2; transition: color .2s; }
+
+/* ── ADD NOTE — EXPANDED ── */
+.note-add.expanded {
+  cursor: default; border-style: solid; border-color: #0649fc;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(6,73,252,.1), 0 8px 24px rgba(6,73,252,.12);
+  transform: translateY(-3px);
+  display: flex; flex-direction: column;
+  align-items: stretch; justify-content: flex-start;
+  padding: 14px; gap: 10px; min-height: 220px;
+}
+.note-add.expanded .nadd-default { display: none; }
+.nadd-form { display: none; flex-direction: column; gap: 10px; width: 100%; }
+.note-add.expanded .nadd-form { display: flex; }
+
+.nadd-textarea {
+  width: 100%; min-height: 68px;
+  border: 1.5px solid rgba(0,0,0,.1); border-radius: 10px;
+  padding: 9px 11px; font-size: 13px; font-family: inherit;
+  color: #1d1d1f; resize: none; outline: none; line-height: 1.5;
+  transition: border-color .15s, box-shadow .15s; background: #f9f9fb;
+}
+.nadd-textarea:focus { border-color: #0649fc; box-shadow: 0 0 0 3px rgba(6,73,252,.1); background: #fff; }
+.nadd-textarea.shake { animation: nadd-shake .4s ease; }
+@keyframes nadd-shake {
+  0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); }
+  60%      { transform: translateX(5px); } 80% { transform: translateX(-3px); }
+}
+
+.nadd-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.nadd-pill {
+  font-size: 10.5px; font-weight: 700; padding: 5px 10px;
+  border-radius: 980px; border: 1.5px solid transparent;
+  cursor: pointer; font-family: inherit;
+  transition: all .15s cubic-bezier(.34,1.2,.64,1);
+}
+.nadd-pill:active { transform: scale(.92); }
+.nadd-pill.urg     { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.nadd-pill.urg.sel { background: #dc2626; color: #fff; border-color: #dc2626; }
+.nadd-pill.med     { background: #fff7ed; color: #ea580c; border-color: #fdba74; }
+.nadd-pill.med.sel { background: #ea580c; color: #fff; border-color: #ea580c; }
+.nadd-pill.bai     { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+.nadd-pill.bai.sel { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+.nadd-actions { display: flex; gap: 7px; }
+.nadd-save {
+  flex: 1; padding: 8px; border-radius: 9px;
+  background: #0649fc; color: #fff; border: none;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: all .15s; position: relative; overflow: hidden;
+}
+.nadd-save:hover   { background: #0540d4; }
+.nadd-save:active  { transform: scale(.97); }
+.nadd-cancel {
+  padding: 8px 12px; border-radius: 9px;
+  background: #f5f5f7; color: #6e6e73;
+  border: none; font-size: 13px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: background .15s;
+}
+.nadd-cancel:hover { background: #e8e8ed; color: #1d1d1f; }
+
+/* ── NOTE ENTRANCE ANIMATION ── */
+@keyframes note-pop {
+  from { opacity: 0; transform: scale(.85) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.note-pop { animation: note-pop .3s cubic-bezier(.34,1.2,.64,1) both; }

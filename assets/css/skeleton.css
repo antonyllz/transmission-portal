@@ -1,0 +1,59 @@
+/* ═══════════════════════════════
+   SKELETON LOADING SYSTEM
+   ═══════════════════════════════ */
+
+@keyframes sk-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.sk {
+  background: linear-gradient(90deg,
+    rgba(0,0,0,.06) 25%,
+    rgba(0,0,0,.11) 37%,
+    rgba(0,0,0,.06) 63%);
+  background-size: 800px 100%;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── CLIENT CARD SKELETON ── */
+.sk-client-card {
+  background: #fff; border: 1px solid rgba(0,0,0,.07);
+  border-radius: 18px; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04); pointer-events: none;
+}
+.sk-client-card .sk-thumb  { width: 100%; aspect-ratio: 16/9; }
+.sk-client-card .sk-body   { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.sk-client-card .sk-line-a { height: 14px; width: 60%; }
+.sk-client-card .sk-line-b { height: 11px; width: 45%; }
+
+/* ── NOTE SKELETON ── */
+.sk-note {
+  background: #fff; border: 1px solid rgba(0,0,0,.07);
+  border-radius: 16px; overflow: hidden;
+  min-height: 148px; display: flex; flex-direction: column; pointer-events: none;
+}
+.sk-note .sk-stripe    { height: 5px; width: 100%; }
+.sk-note .sk-note-body { flex: 1; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.sk-note .sk-line-a    { height: 10px; width: 40%; }
+.sk-note .sk-line-b    { height: 12px; width: 85%; }
+.sk-note .sk-line-c    { height: 12px; width: 65%; }
+.sk-note .sk-line-d    { height: 11px; width: 30%; margin-top: auto; }
+
+/* ── NOTIF ITEM SKELETON ── */
+.sk-notif-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.04);
+}
+.sk-notif-item .sk-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.sk-notif-item .sk-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.sk-notif-item .sk-line-a { height: 11px; width: 75%; }
+.sk-notif-item .sk-line-b { height: 9px;  width: 50%; }
+
+/* ── REVEAL ANIMATION ── */
+@keyframes sk-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sk-reveal { animation: sk-fade-in .35s cubic-bezier(.34,1.2,.64,1) both; }

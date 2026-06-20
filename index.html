@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Network Engineering — Transmission</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css"/>
+  <link rel="stylesheet" href="assets/css/home.css"/>
+  <link rel="stylesheet" href="assets/css/demands.css"/>
+  <link rel="stylesheet" href="assets/css/timeline.css"/>
+  <link rel="stylesheet" href="assets/css/notifications.css"/>
+  <link rel="stylesheet" href="assets/css/skeleton.css"/>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══ -->
+<div class="topbar">
+  <img id="tb-logo" src="assets/images/logo-tely.jpg" alt="Tely" style="height:28px;border-radius:5px;cursor:pointer;"/>
+  <div class="tb-div"></div>
+  <span class="tb-lbl">Network Engineering &mdash; Transmission</span>
+  <div class="tb-demands" id="tb-demands"></div>
+  <button class="notif-btn" id="notif-btn" onclick="toggleNotif(event)" aria-label="Notifications">
+    <svg id="notif-bell" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 01-3.46 0"/>
+    </svg>
+    <span class="notif-badge" id="notif-badge"></span>
+  </button>
+</div>
+
+<!-- ══ NOTIFICATION PANEL ══ -->
+<div class="notif-backdrop" id="notif-backdrop" onclick="closeNotif()"></div>
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-hdr">
+    <div class="notif-hdr-title">Notifications</div>
+    <button class="modal-close" onclick="closeNotif()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div id="notif-demands-section">
+    <div class="notif-section-lbl">Demandas ativas</div>
+    <div id="notif-demands-list"></div>
+  </div>
+  <div id="notif-cases-section">
+    <div class="notif-section-lbl" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Cases em aberto</span>
+      <button class="notif-clear" id="notif-clear" onclick="notifClear()">Limpar</button>
+    </div>
+    <div class="notif-list" id="notif-list"></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     HOME
+══════════════════════════════════════════ -->
+<div id="pg-home" class="page active">
+  <div class="home-hero">
+    <div class="ey">Network Engineering</div>
+    <h1>Transmission Portal</h1>
+    <p>Internal tools and reports for the Transmission team</p>
+  </div>
+
+  <div class="wrap">
+
+    <!-- DEMANDS -->
+    <div style="margin-bottom:40px;">
+      <div class="sec-lbl">Demandas</div>
+      <div class="notes-grid" id="notes-grid">
+        <div class="note-card note-add" id="note-add-card" onclick="expandAddNote()">
+          <div class="nadd-default" style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="nadd-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </div>
+            <span class="nadd-lbl">Nova demanda</span>
+          </div>
+          <div class="nadd-form">
+            <textarea class="nadd-textarea" id="nadd-text" placeholder="Descreva a demanda..." rows="3" onclick="event.stopPropagation()"></textarea>
+            <div class="nadd-pills">
+              <button class="nadd-pill urg sel" data-p="urgente" onclick="nadd_pickPrio(this);event.stopPropagation()">&#9650; 6h</button>
+              <button class="nadd-pill med"     data-p="media"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9679; 1d</button>
+              <button class="nadd-pill bai"     data-p="baixa"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9632; 7d</button>
+            </div>
+            <div class="nadd-actions">
+              <button class="nadd-save"   onclick="saveNoteAdd(event)">Salvar</button>
+              <button class="nadd-cancel" onclick="cancelAddNote(event)">&#10005;</button>
+            </div>
+          </div>
+        </div>
+        <!-- demand note cards rendered by JS -->
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div class="sec-lbl">Clients</div>
+    <div class="clients-grid">
+      <div class="client-card" onclick="showPage('pg-amazon-leo')">
+        <div class="card-thumb"><img src="assets/images/amazon-leo-card.jpg" alt="Amazon Leo"/></div>
+        <div class="card-body"><div class="card-name">Amazon Leo</div><div class="card-desc">Reports &amp; tools</div></div>
+      </div>
+      <div class="client-card" onclick="showPage('pg-starlink')">
+        <div class="card-thumb"><img src="assets/images/starlink-card.jpg" alt="Starlink"/></div>
+        <div class="card-body"><div class="card-name">Starlink</div><div class="card-desc">Reports &amp; tools</div></div>
+      </div>
+      <div class="client-card ph">
+        <div class="card-thumb empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>
+          </svg>
+        </div>
+        <div class="card-body"><div class="card-name">Coming soon</div><div class="card-desc">New client</div></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     AMAZON LEO
+══════════════════════════════════════════ -->
+<div id="pg-amazon-leo" class="page">
+  <div class="cl-hero">
+    <img src="assets/images/amazon-leo-banner.jpg" alt="Amazon Leo"/>
+    <div class="ov"></div>
+    <button class="back-btn" onclick="showPage('pg-home')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back
+    </button>
+    <div class="cl-title"><h2>Amazon Leo</h2><p>Select an action below</p></div>
+  </div>
+  <div class="act-section">
+    <div class="act-lbl">Available Tools</div>
+    <div class="act-grid">
+      <div class="act-card" onclick="openRFO()">
+        <div class="act-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <div class="act-name">Generate RFO</div>
+        <div class="act-desc">Create a Reason for Outage report and export as PDF</div>
+        <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="act-card" onclick="openTLList()">
+        <div class="act-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div class="act-name">Case Timeline</div>
+        <div class="act-desc">Document and track the timeline of an incident case</div>
+        <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STARLINK
+══════════════════════════════════════════ -->
+<div id="pg-starlink" class="page">
+  <div class="cl-hero">
+    <img src="assets/images/starlink-banner.jpg" alt="Starlink"/>
+    <div class="ov"></div>
+    <button class="back-btn" onclick="showPage('pg-home')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back
+    </button>
+    <div class="cl-title"><h2>Starlink</h2><p>Select an action below</p></div>
+  </div>
+  <div class="act-section">
+    <div class="act-lbl">Available Tools</div>
+    <div class="act-grid">
+      <div class="act-card cs">
+        <div class="act-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+          </svg>
+        </div>
+        <div class="act-name">Coming soon</div>
+        <div class="act-desc">Tools for Starlink will be added here soon</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     RFO GENERATOR (iframe)
+══════════════════════════════════════════ -->
+<div id="pg-rfo" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-amazon-leo')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Amazon Leo
+    </button>
+    <span class="sep">/</span><span class="crumb">Generate RFO</span>
+  </div>
+  <iframe id="rfo-frame" src="" style="width:100%;height:calc(100vh - 52px - 44px);border:none;display:block;"></iframe>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     CASE TIMELINE — LIST
+══════════════════════════════════════════ -->
+<div id="pg-tl-list" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-amazon-leo')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Amazon Leo
+    </button>
+    <span class="sep">/</span><span class="crumb">Case Timeline</span>
+  </div>
+  <div class="wrap-md">
+    <div class="tl-list-hdr">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#aeaeb2;margin-bottom:6px;">Amazon Leo</div>
+        <h2>Case Timeline</h2>
+      </div>
+      <button class="btn-blue" onclick="showPage('pg-tl-new')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Case
+      </button>
+    </div>
+    <div id="tickets-container"></div>
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     CASE TIMELINE — NEW CASE
+══════════════════════════════════════════ -->
+<div id="pg-tl-new" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-amazon-leo')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Amazon Leo
+    </button>
+    <span class="sep">/</span>
+    <button onclick="openTLList()">Case Timeline</button>
+    <span class="sep">/</span><span class="crumb">New Case</span>
+  </div>
+  <div class="wrap-md">
+    <div style="margin-bottom:28px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#aeaeb2;margin-bottom:8px;">Case Timeline</div>
+      <h2 style="font-size:22px;font-weight:700;color:#1d1d1f;letter-spacing:-.3px;">New Case</h2>
+      <p style="font-size:14px;color:#6e6e73;margin-top:4px;">Fill in the case details to start documenting the incident timeline.</p>
+    </div>
+    <div class="form-card">
+      <div class="fsec">
+        <div class="flbl">Case Information</div>
+        <div class="g2">
+          <div class="field">
+            <label>Ticket ID <span class="req">*</span></label>
+            <input type="text" id="new-ticket" placeholder="ex: 1263521"/>
+          </div>
+          <div class="field">
+            <label>Site <span class="req">*</span></label>
+            <select id="new-site" onchange="newSiteChange()">
+              <option value="">Select site</option>
+              <option value="SLZ501">SLZ501 &mdash; Ocara / CE</option>
+              <option value="CPV501">CPV501 &mdash; Sanhar&oacute; / PE</option>
+            </select>
+          </div>
+          <div class="field gcol2">
+            <label>Circuit ID <span class="req">*</span></label>
+            <select id="new-circuit" disabled><option value="">Select site first</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="fsec">
+        <div class="flbl">Cause</div>
+        <div class="pills">
+          <button class="pill" data-cause="Indisponibilidade" onclick="pickCause(this)"><span class="pdot" style="background:#ef5350"></span>Indisponibilidade</button>
+          <button class="pill" data-cause="Flaps" onclick="pickCause(this)"><span class="pdot" style="background:#ff9800"></span>Flaps</button>
+          <button class="pill" data-cause="Falha El&eacute;trica" onclick="pickCause(this)"><span class="pdot" style="background:#f59e0b"></span>Falha El&eacute;trica</button>
+          <button class="pill" data-cause="Solicita&ccedil;&atilde;o de RFO" onclick="pickCause(this)"><span class="pdot" style="background:#0649fc"></span>Solicita&ccedil;&atilde;o de RFO</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:32px;">
+      <button class="btn-sm" onclick="openTLList()">Cancel</button>
+      <button class="btn-blue" onclick="createCase()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Timeline
+      </button>
+    </div>
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     CASE TIMELINE — DETAIL
+══════════════════════════════════════════ -->
+<div id="pg-tl-detail" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-amazon-leo')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Amazon Leo
+    </button>
+    <span class="sep">/</span>
+    <button onclick="openTLList()">Case Timeline</button>
+    <span class="sep">/</span><span class="crumb" id="detail-crumb">Case</span>
+  </div>
+  <div class="wrap-md">
+    <div id="detail-hdr" class="case-hdr"></div>
+    <div class="add-card">
+      <div class="fsec" style="border-bottom:none;">
+        <div class="flbl">Add Event</div>
+        <div class="g2" style="margin-bottom:12px;">
+          <div class="field">
+            <label>Time</label>
+            <input type="time" id="ev-time" step="1"/>
+          </div>
+          <div class="field">
+            <label>Event Type</label>
+            <select id="ev-type">
+              <option>Incidente detectado</option>
+              <option>Equipe notificada</option>
+              <option>Investiga&ccedil;&atilde;o iniciada</option>
+              <option>Cliente notificado</option>
+              <option>Solu&ccedil;&atilde;o aplicada</option>
+              <option>Servi&ccedil;o normalizado</option>
+              <option>RFO enviado</option>
+              <option>Outro</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label>Description</label>
+          <textarea id="ev-desc" placeholder="Describe what happened at this point..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn-sm" onclick="addEvent()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Event
+          </button>
+          <button class="btn-danger" onclick="deleteCase()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Delete Case
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="detail-entries" class="tl-entries"></div>
+  </div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══ SCRIPTS (load order matters) ══ -->
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/database.js"></script>
+<script src="assets/js/navigation.js"></script>
+<script src="assets/js/skeleton.js"></script>
+<script src="assets/js/demands.js"></script>
+<script src="assets/js/timeline.js"></script>
+<script src="assets/js/notifications.js"></script>
+<script src="assets/js/app.js"></script>
+
+</body>
+</html>
