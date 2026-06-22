@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="assets/css/timeline.css"/>
   <link rel="stylesheet" href="assets/css/notifications.css"/>
   <link rel="stylesheet" href="assets/css/skeleton.css"/>
+  <link rel="stylesheet" href="assets/css/profile.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magic.css@latest/magic.min.css"/>
 </head>
 <body>
 
@@ -19,13 +21,56 @@
   <img id="tb-logo" src="assets/images/logo-tely.jpg" alt="Tely" style="height:28px;border-radius:5px;cursor:pointer;"/>
   <div class="tb-div"></div>
   <span class="tb-lbl">Network Engineering &mdash; Transmission</span>
+  <div class="tb-spacer"></div>
+  <button class="tb-icon-btn" id="settings-btn" onclick="openSettings()" aria-label="Configurações">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  </button>
   <button class="notif-btn" id="notif-btn" onclick="toggleNotif(event)" aria-label="Notifications">
-    <svg id="notif-bell" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <svg id="notif-bell" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
       <path d="M13.73 21a2 2 0 01-3.46 0"/>
     </svg>
     <span class="notif-badge" id="notif-badge"></span>
   </button>
+  <button class="tb-avatar-btn" id="tb-avatar-btn" onclick="openProfilePanel()" aria-label="Perfil">
+    <div class="tb-avatar" id="tb-avatar"></div>
+  </button>
+</div>
+
+<!-- ══ SIDE PANELS BACKDROP ══ -->
+<div class="side-backdrop" id="side-backdrop" onclick="closeSidePanels()"></div>
+
+<!-- ══ SETTINGS PANEL ══ -->
+<div class="side-panel" id="settings-panel">
+  <div class="side-panel-hdr">
+    <div class="side-panel-title">Configurações</div>
+    <button class="modal-close" onclick="closeSettings()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="side-panel-body" id="settings-body"></div>
+</div>
+
+<!-- ══ PROFILE PANEL ══ -->
+<div class="side-panel" id="profile-panel">
+  <div class="side-panel-hdr">
+    <div class="side-panel-title">Perfil</div>
+    <button class="modal-close" onclick="closeProfilePanel()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="side-panel-body" id="profile-body"></div>
+  <div class="side-panel-footer">
+    <button class="btn-sm" onclick="closeProfilePanel()">Cancelar</button>
+    <button class="btn-blue" onclick="saveProfile()">Salvar</button>
+  </div>
 </div>
 
 <!-- ══ NOTIFICATION PANEL ══ -->
@@ -363,6 +408,8 @@
 <!-- ══ SCRIPTS (load order matters) ══ -->
 <script src="assets/js/utils.js"></script>
 <script src="assets/js/database.js"></script>
+<script src="assets/js/animations.js"></script>
+<script src="assets/js/profile.js"></script>
 <script src="assets/js/navigation.js"></script>
 <script src="assets/js/skeleton.js"></script>
 <script src="assets/js/demands.js"></script>

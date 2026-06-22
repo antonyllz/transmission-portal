@@ -104,12 +104,48 @@ body {
 }
 .btn-danger:hover { background: #fbd5d3; }
 
-/* ripple */
+/* ── RIPPLE ── */
 .ripple {
-  position: absolute; border-radius: 50%; background: rgba(255,255,255,.35);
-  transform: scale(0); animation: ripple-out .5s ease-out forwards; pointer-events: none;
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,.32);
+  transform: scale(0); animation: ripple-out .55s ease-out forwards; pointer-events: none;
 }
+.ripple-dark { background: rgba(0,0,0,.09); }
 @keyframes ripple-out { to { transform: scale(4); opacity: 0; } }
+
+/* ── PAGE TRANSITION ── */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-entering { animation: page-in 0.32s cubic-bezier(.25,.46,.45,.94) forwards; }
+
+/* ── LOGO POP ── */
+@keyframes logo-pop {
+  0%   { opacity: 0; transform: scale(0.45) rotate(-18deg); filter: blur(4px); }
+  65%  { opacity: 1; transform: scale(1.1)  rotate(3deg);   filter: blur(0); }
+  100% { opacity: 1; transform: scale(1)    rotate(0deg); }
+}
+.logo-pop-anim { animation: logo-pop 0.58s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ── TOPBAR LABEL / DIVIDER SLIDE ── */
+@keyframes label-slide {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.label-slide-anim { animation: label-slide 0.38s ease 0.22s both; }
+
+/* ── BUTTON ACTIVE PRESS ── */
+.btn-blue:active  { transform: scale(0.95) !important; }
+.btn-sm:active    { transform: scale(0.95) !important; }
+.btn-danger:active { transform: scale(0.95) !important; }
+.back-btn:active  { transform: scale(0.95) !important; }
+
+/* ── HERO BANNER ZOOM ── */
+@keyframes banner-zoom {
+  from { transform: scale(1.07); }
+  to   { transform: scale(1); }
+}
+.page-entering .cl-hero img { animation: banner-zoom 0.65s cubic-bezier(.25,.46,.45,.94) forwards; }
 
 /* ── FORMS ── */
 input[type=text], input[type=time], select, textarea {

@@ -255,6 +255,13 @@
           <option value="">Selecione o site primeiro</option>
         </select>
       </div>
+      <div class="field">
+        <label>Analista <span class="req">*</span></label>
+        <select id="analystName">
+          <option value="Antony Araújo">Antony Araújo</option>
+          <option value="Jarbas Sousa">Jarbas Sousa</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -485,7 +492,7 @@
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(40, 70, 130);
-    const name1 = 'Antony Araújo';
+    const name1 = document.getElementById('analystName').value;
     doc.text(name1, sigLX + (sigW - doc.getTextWidth(name1)) / 2, sigY + 5);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);

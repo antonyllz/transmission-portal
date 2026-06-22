@@ -3,7 +3,7 @@
    ═══════════════════ */
 
 .notif-btn {
-  margin-left: auto; background: transparent; border: none;
+  background: transparent; border: none;
   cursor: pointer; padding: 8px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,.92); position: relative;

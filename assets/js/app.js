@@ -13,6 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
   initClientSkeletons();
   renderNoteBoardWithSkeleton();
 
+  /* ── Profile & settings ── */
+  initProfile();
+
+  /* ── Initial animations ── */
+  animateLogo();
+  animateHero();
+  animateClientCards();
+  bindRipples();
+
   /* ── Tick every second ── */
   setInterval(function() {
     tickNoteTimers();
