@@ -35,6 +35,11 @@ function openRFO() {
   showPage('pg-rfo');
 }
 
+function openLOA() {
+  document.getElementById('loa-frame').src = 'loa/index.html';
+  showPage('pg-loa');
+}
+
 function openTLList() {
   renderList();
   showPage('pg-tl-list');
