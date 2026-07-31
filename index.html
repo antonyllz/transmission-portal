@@ -177,6 +177,17 @@
           <div class="act-desc">Create a Letter of Authorization and export as PDF</div>
           <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         </div>
+        <div class="act-card" onclick="openRFOGeneric()">
+          <div class="act-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <div class="act-name">Generate RFO</div>
+          <div class="act-desc">Create a Reason for Outage report for any customer and export as PDF</div>
+          <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+        </div>
       </div>
     </div>
 
@@ -286,6 +297,21 @@
     <span class="sep">/</span><span class="crumb">Generate LOA</span>
   </div>
   <iframe id="loa-frame" src="" style="width:100%;height:calc(100vh - 52px - 44px);border:none;display:block;"></iframe>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     RFO GENERATOR — GENERIC (iframe)
+══════════════════════════════════════════ -->
+<div id="pg-rfo-generic" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-home')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Home
+    </button>
+    <span class="sep">/</span><span class="crumb">Generate RFO</span>
+  </div>
+  <iframe id="rfo-generic-frame" src="" style="width:100%;height:calc(100vh - 52px - 44px);border:none;display:block;"></iframe>
 </div>
 
 

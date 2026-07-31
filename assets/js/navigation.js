@@ -40,6 +40,11 @@ function openLOA() {
   showPage('pg-loa');
 }
 
+function openRFOGeneric() {
+  document.getElementById('rfo-generic-frame').src = 'rfo-generic/index.html';
+  showPage('pg-rfo-generic');
+}
+
 function openTLList() {
   renderList();
   showPage('pg-tl-list');
