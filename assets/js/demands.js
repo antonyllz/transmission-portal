@@ -3,9 +3,10 @@
    ═══════════════════════════════ */
 
 var PRIO = {
-  urgente: { label: 'Urgente', dur: 6 * 3600,      bar: '#dc2626' },
-  media:   { label: 'M\u00e9dia',  dur: 24 * 3600,     bar: '#ea580c' },
-  baixa:   { label: 'Baixa',   dur: 7 * 24 * 3600, bar: '#2563eb' }
+  urgente: { label: 'Urgente',   dur: 6 * 3600,      bar: '#dc2626' },
+  media:   { label: 'M\u00e9dia', dur: 24 * 3600,     bar: '#ea580c' },
+  baixa:   { label: 'Baixa',     dur: 7 * 24 * 3600, bar: '#2563eb' },
+  sempre:  { label: 'Sem prazo', dur: null,          bar: '#7c3aed' }
 };
 
 var nadd_prio = 'urgente';
@@ -75,7 +76,8 @@ function saveNoteAdd(e) {
     description: desc,
     priority:    nadd_prio,
     createdAt:   new Date().toISOString(),
-    duration:    PRIO[nadd_prio].dur
+    duration:    PRIO[nadd_prio].dur,
+    comments:    []
   };
   var all = dmdGetAll();
   all.unshift(d);
@@ -97,10 +99,18 @@ function renderNoteBoard() {
   var now  = Date.now();
 
   all.forEach(function(d, i) {
-    var p       = PRIO[d.priority] || PRIO.baixa;
-    var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
-    var rem     = Math.max(0, d.duration - elapsed);
-    var tc      = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : p.bar);
+    var p          = PRIO[d.priority] || PRIO.baixa;
+    var noDeadline = d.duration == null;
+    var rem        = 0, tc, timerText;
+    if (noDeadline) {
+      tc = p.bar;
+      timerText = 'Sem prazo';
+    } else {
+      var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
+      rem = Math.max(0, d.duration - elapsed);
+      tc  = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : p.bar);
+      timerText = fmtCountdown(rem);
+    }
 
     var card = document.createElement('div');
     card.className = 'note-card note-demand note-pop';
@@ -114,13 +124,23 @@ function renderNoteBoard() {
       +   '<div class="note-desc">' + esc(d.description) + '</div>'
       +   '<div class="note-footer">'
       +     '<span class="note-timer" id="ntimer-' + d.id + '" style="color:' + tc + '">'
-      +       fmtCountdown(rem)
+      +       timerText
       +     '</span>'
       +     '<span class="note-chevron">'
       +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
       +     '</span>'
       +   '</div>'
       +   '<div class="note-actions">'
+      +     '<div class="note-comments" onclick="event.stopPropagation()">'
+      +       '<div class="note-comments-list" id="ncomments-' + d.id + '">' + buildCommentsHtml(d.comments) + '</div>'
+      +       '<div class="note-comment-add">'
+      +         '<input type="text" class="note-comment-input" id="ncinput-' + d.id + '" placeholder="Comentar..." '
+      +           'onkeydown="if(event.key===\'Enter\'){addComment(\'' + d.id + '\')}" />'
+      +         '<button class="note-comment-send" onclick="addComment(\'' + d.id + '\')" aria-label="Comentar">'
+      +           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+      +         '</button>'
+      +       '</div>'
+      +     '</div>'
       +     '<button class="note-act note-act-done" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); finishDemand(this.dataset.id)">'
       +       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
       +       'Demanda finalizada'
@@ -133,6 +153,42 @@ function renderNoteBoard() {
       + '</div>';
     grid.appendChild(card);
   });
+}
+
+/* ── COMMENTS ── */
+function buildCommentsHtml(comments) {
+  if (!comments || !comments.length) {
+    return '<div class="note-comments-empty">Sem coment\u00e1rios ainda</div>';
+  }
+  return comments.map(function(c) {
+    var dt = new Date(c.at);
+    var time = pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+    return '<div class="note-comment">'
+      + '<span class="note-comment-time">' + time + '</span>'
+      + '<span class="note-comment-text">' + esc(c.text) + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function addComment(id) {
+  var input = document.getElementById('ncinput-' + id);
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+
+  var all = dmdGetAll();
+  var d = all.find(function(x) { return x.id === id; });
+  if (!d) return;
+  if (!d.comments) d.comments = [];
+  d.comments.push({ text: text, at: new Date().toISOString() });
+  dmdSave(all);
+
+  input.value = '';
+  var list = document.getElementById('ncomments-' + id);
+  if (list) {
+    list.innerHTML = buildCommentsHtml(d.comments);
+    list.scrollTop = list.scrollHeight;
+  }
 }
 
 /* ── REMOVE / FINISH NOTE ── */
@@ -167,7 +223,7 @@ function tickNoteTimers() {
   var now = Date.now();
   all.forEach(function(d) {
     var el = document.getElementById('ntimer-' + d.id);
-    if (!el) return;
+    if (!el || d.duration == null) return;
     var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
     var rem     = Math.max(0, d.duration - elapsed);
     var p       = PRIO[d.priority] || PRIO.baixa;

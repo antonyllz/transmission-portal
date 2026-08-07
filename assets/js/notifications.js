@@ -48,19 +48,26 @@ function renderNotifDemands() {
 
   var all = dmdGetAll();
   var now = Date.now();
-  var BARS = { urgente: '#dc2626', media: '#ea580c', baixa: '#2563eb' };
-  var LBLS = { urgente: 'Urgente', media: 'M\u00e9dia', baixa: 'Baixa' };
+  var BARS = { urgente: '#dc2626', media: '#ea580c', baixa: '#2563eb', sempre: '#7c3aed' };
+  var LBLS = { urgente: 'Urgente', media: 'M\u00e9dia', baixa: 'Baixa', sempre: 'Sem prazo' };
 
   if (!all.length) { if (sec) sec.style.display = 'none'; return; }
   if (sec) sec.style.display = '';
 
   var h = '';
   all.forEach(function(d, i) {
-    var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
-    var rem     = Math.max(0, d.duration - elapsed);
-    var bar     = BARS[d.priority] || '#0649fc';
-    var tc      = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : bar);
-    var lbl     = LBLS[d.priority] || d.priority;
+    var bar = BARS[d.priority] || '#0649fc';
+    var lbl = LBLS[d.priority] || d.priority;
+    var tc, timerText;
+    if (d.duration == null) {
+      tc = bar;
+      timerText = 'Sem prazo';
+    } else {
+      var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
+      var rem     = Math.max(0, d.duration - elapsed);
+      tc = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : bar);
+      timerText = fmtCountdown(rem);
+    }
 
     h += '<div class="notif-demand-item" style="animation-delay:' + (i * 0.05) + 's">'
        + '<div class="nd-bar" style="background:' + bar + '"></div>'
@@ -69,7 +76,7 @@ function renderNotifDemands() {
        +   '<div class="nd-meta">' + lbl + '</div>'
        + '</div>'
        + '<span class="nd-timer" id="nd-timer-' + esc(d.id) + '" style="color:' + tc + '">'
-       +   fmtCountdown(rem)
+       +   timerText
        + '</span>'
        + '<button class="nd-del" data-id="' + esc(d.id) + '" onclick="notifDelDemand(this.dataset.id)" title="Remover">'
        +   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
@@ -162,10 +169,10 @@ function notifClear() {
 function tickNotifDemandTimers() {
   var all = dmdGetAll();
   var now = Date.now();
-  var BARS = { urgente: '#dc2626', media: '#ea580c', baixa: '#2563eb' };
+  var BARS = { urgente: '#dc2626', media: '#ea580c', baixa: '#2563eb', sempre: '#7c3aed' };
   all.forEach(function(d) {
     var el = document.getElementById('nd-timer-' + d.id);
-    if (!el) return;
+    if (!el || d.duration == null) return;
     var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
     var rem     = Math.max(0, d.duration - elapsed);
     el.textContent = fmtCountdown(rem);

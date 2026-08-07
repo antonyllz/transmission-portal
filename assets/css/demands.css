@@ -38,7 +38,7 @@
   max-height: 0; opacity: 0; margin-top: 0;
   transition: max-height .3s cubic-bezier(.4,0,.2,1), opacity .22s ease, margin-top .3s cubic-bezier(.4,0,.2,1);
 }
-.note-card.expanded .note-actions { max-height: 96px; opacity: 1; margin-top: 11px; }
+.note-card.expanded .note-actions { max-height: 320px; opacity: 1; margin-top: 11px; }
 .note-act {
   width: 100%; padding: 8px 10px; border-radius: 9px; border: none;
   font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer;
@@ -50,6 +50,34 @@
 .note-act-done:hover { background: #16a34a; color: #fff; }
 .note-act-del  { background: #fdecea; color: #dc2626; }
 .note-act-del:hover  { background: #dc2626; color: #fff; }
+
+/* ── COMMENTS ── */
+.note-comments { cursor: default; }
+.note-comments-list {
+  max-height: 88px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 5px;
+  margin-bottom: 8px;
+}
+.note-comments-list::-webkit-scrollbar { width: 3px; }
+.note-comments-list::-webkit-scrollbar-thumb { background: #e0e0e5; border-radius: 4px; }
+.note-comments-empty { font-size: 11px; color: #aeaeb2; text-align: center; padding: 4px 0; }
+.note-comment { font-size: 11.5px; line-height: 1.4; color: #3a3a3c; }
+.note-comment-time { font-weight: 700; color: #aeaeb2; margin-right: 5px; }
+.note-comment-add { display: flex; gap: 6px; }
+.note-comment-input {
+  flex: 1; min-width: 0; padding: 7px 10px; border-radius: 9px;
+  border: 1px solid rgba(0,0,0,.1); font-size: 11.5px; font-family: inherit;
+  outline: none; transition: border-color .15s;
+}
+.note-comment-input:focus { border-color: #0649fc; }
+.note-comment-send {
+  flex-shrink: 0; width: 30px; border-radius: 9px; border: none;
+  background: #0649fc; color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .12s;
+}
+.note-comment-send:hover   { background: #0538d1; }
+.note-comment-send:active  { transform: scale(.92); }
 
 /* ── REMOVE / FINISH FEEDBACK ── */
 .note-removing {
@@ -132,6 +160,8 @@
 .nadd-pill.med.sel { background: #ea580c; color: #fff; border-color: #ea580c; }
 .nadd-pill.bai     { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
 .nadd-pill.bai.sel { background: #2563eb; color: #fff; border-color: #2563eb; }
+.nadd-pill.sempre     { background: #f5f3ff; color: #7c3aed; border-color: #c4b5fd; }
+.nadd-pill.sempre.sel { background: #7c3aed; color: #fff; border-color: #7c3aed; }
 
 .nadd-actions { display: flex; gap: 7px; }
 .nadd-save {
