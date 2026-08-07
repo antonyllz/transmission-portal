@@ -36,9 +36,6 @@
     </svg>
     <span class="notif-badge" id="notif-badge"></span>
   </button>
-  <button class="tb-avatar-btn" id="tb-avatar-btn" onclick="openProfilePanel()" aria-label="Perfil">
-    <div class="tb-avatar" id="tb-avatar"></div>
-  </button>
 </div>
 
 <!-- ══ SIDE PANELS BACKDROP ══ -->
@@ -57,22 +54,6 @@
   <div class="side-panel-body" id="settings-body"></div>
 </div>
 
-<!-- ══ PROFILE PANEL ══ -->
-<div class="side-panel" id="profile-panel">
-  <div class="side-panel-hdr">
-    <div class="side-panel-title">Perfil</div>
-    <button class="modal-close" onclick="closeProfilePanel()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
-  </div>
-  <div class="side-panel-body" id="profile-body"></div>
-  <div class="side-panel-footer">
-    <button class="btn-sm" onclick="closeProfilePanel()">Cancelar</button>
-    <button class="btn-blue" onclick="saveProfile()">Salvar</button>
-  </div>
-</div>
 
 <!-- ══ NOTIFICATION PANEL ══ -->
 <div class="notif-backdrop" id="notif-backdrop" onclick="closeNotif()"></div>
