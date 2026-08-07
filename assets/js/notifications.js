@@ -152,7 +152,7 @@ function notifDel(e, btn) {
 
 function notifClear() {
   if (!confirm('Delete all cases? This cannot be undone.')) return;
-  localStorage.removeItem('net_cases');
+  dbSave([]);
   renderNotifList();
   updateBadge();
   closeNotif();

@@ -62,11 +62,11 @@ npx serve .
 
 ## Data storage
 
-All data is persisted in `localStorage`:
-- `net_cases` — Case Timeline tickets (JSON array)
-- `net_demands` — Active demands (JSON array)
+Cases and demands are stored server-side (`server/`) so every user sees the same data, shared via a small Node API (`GET`/`PUT` on `/api/cases` and `/api/demands`, backed by JSON files in `server/data/`). The browser also keeps a `localStorage` mirror (`net_cases`, `net_demands`) as an offline fallback and for instant first paint; it resyncs from the server on load and polls every 8s to pick up changes from other users.
 
-To clear all data: open DevTools → Application → Local Storage → delete keys.
+Running the frontend without the API (e.g. `python3 -m http.server`) still works — it just falls back to the local-only cache, same as before.
+
+In production the API runs under PM2 on the VPS, proxied by nginx at `/api/` on the same port as the site (see `server/server.js`).
 
 ## Claude Code usage
 
