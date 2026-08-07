@@ -260,7 +260,7 @@
         <label>Analista <span class="req">*</span></label>
         <select id="analystName">
           <option value="Antony Araújo">Antony Araújo</option>
-          <option value="Jarbas Sousa">Jarbas Sousa</option>
+          <option value="Eric Silva">Eric Silva</option>
         </select>
       </div>
     </div>
@@ -303,6 +303,26 @@
         <label>Solution <span class="req">*</span></label>
         <textarea id="solution" placeholder="Descreva a solução aplicada…"></textarea>
       </div>
+    </div>
+  </div>
+
+  <div class="card-section">
+    <div class="section-label">Texto para E-mail</div>
+    <div class="field-grid full" style="gap:14px;">
+      <div class="field">
+        <label>Cole este texto no corpo do e-mail junto com o PDF anexado</label>
+        <textarea id="emailTemplate" readonly rows="7" style="resize: vertical;">Hello Amazon Leo Team,
+
+Please find attached the RFO for this case.
+
+Please do not hesitate to contact us should you require any further information.
+
+Best regards,</textarea>
+      </div>
+      <button class="btn btn-ghost" type="button" style="align-self: flex-start;" onclick="copyEmailTemplate()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar texto
+      </button>
     </div>
   </div>
 
@@ -365,6 +385,13 @@
   function v(id) { return document.getElementById(id).value.trim(); }
   function markError(id) { document.getElementById(id).classList.add('error'); }
   function clearErrors() { document.querySelectorAll('.error').forEach(e => e.classList.remove('error')); }
+
+  function copyEmailTemplate() {
+    const text = document.getElementById('emailTemplate').value;
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('✓ Texto copiado'))
+      .catch(() => showToast('Não foi possível copiar', 'error-msg'));
+  }
 
   function clearForm() {
     ['ticketId','cause','eventLocation','solution'].forEach(id => document.getElementById(id).value = '');
