@@ -387,10 +387,30 @@ Best regards,</textarea>
   function clearErrors() { document.querySelectorAll('.error').forEach(e => e.classList.remove('error')); }
 
   function copyEmailTemplate() {
-    const text = document.getElementById('emailTemplate').value;
-    navigator.clipboard.writeText(text)
-      .then(() => showToast('✓ Texto copiado'))
-      .catch(() => showToast('Não foi possível copiar', 'error-msg'));
+    const field = document.getElementById('emailTemplate');
+    const text = field.value;
+
+    function fallbackCopy() {
+      field.focus();
+      field.select();
+      try {
+        if (document.execCommand('copy')) {
+          showToast('✓ Texto copiado');
+        } else {
+          showToast('Não foi possível copiar', 'error-msg');
+        }
+      } catch (e) {
+        showToast('Não foi possível copiar', 'error-msg');
+      }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast('✓ Texto copiado'))
+        .catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
   }
 
   function clearForm() {
