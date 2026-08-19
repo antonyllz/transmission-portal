@@ -243,6 +243,10 @@
         <input type="text" id="ticketId" placeholder="1263521" />
       </div>
       <div class="field">
+        <label>Amazon Leo Ticket <span class="req">*</span></label>
+        <input type="text" id="amazonLeoTicket" placeholder="LEO-000000" />
+      </div>
+      <div class="field">
         <label>Site Name <span class="req">*</span></label>
         <select id="siteName" onchange="updateCircuits()">
           <option value="">Selecione</option>
@@ -413,15 +417,30 @@ Best regards,</textarea>
     }
   }
 
+  function todayStr() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  function setDefaultDates() {
+    const t = todayStr();
+    document.getElementById('startDate').value = t;
+    document.getElementById('endDate').value = t;
+  }
+
   function clearForm() {
-    ['ticketId','cause','eventLocation','solution'].forEach(id => document.getElementById(id).value = '');
-    ['startDate','startTime','endDate','endTime'].forEach(id => document.getElementById(id).value = '');
+    ['ticketId','amazonLeoTicket','cause','eventLocation','solution'].forEach(id => document.getElementById(id).value = '');
+    ['startTime','endTime'].forEach(id => document.getElementById(id).value = '');
+    setDefaultDates();
     document.getElementById('siteName').value = '';
     document.getElementById('circuitId').innerHTML = '<option value="">Selecione o site primeiro</option>';
     document.getElementById('circuitId').disabled = true;
     clearErrors();
     document.getElementById('toast').className = 'toast';
   }
+
+  document.addEventListener('DOMContentLoaded', setDefaultDates);
 
   function fmtDuration(dateStr, timeStr) {
     if (!dateStr || !timeStr) return '';
@@ -433,7 +452,7 @@ Best regards,</textarea>
     clearErrors();
     let err = false;
 
-    ['ticketId','siteName','circuitId','cause','eventLocation','solution'].forEach(id => {
+    ['ticketId','amazonLeoTicket','siteName','circuitId','cause','eventLocation','solution'].forEach(id => {
       if (!v(id)) { markError(id); err = true; }
     });
     ['startDate','startTime','endDate','endTime'].forEach(id => {
@@ -441,7 +460,8 @@ Best regards,</textarea>
     });
     if (err) { showToast('Preencha todos os campos obrigatórios.', 'error-msg'); return; }
 
-    const ticketId      = v('ticketId');
+    const ticketId       = v('ticketId');
+    const amazonLeoTicket = v('amazonLeoTicket');
     const siteName      = v('siteName');
     const circuitId     = v('circuitId');
     const cause         = v('cause');
@@ -469,10 +489,11 @@ Best regards,</textarea>
     const rH   = 10.5;
     const cL   = 42;
     const rows  = [
-      ['Customer',   'Amazon Leo'],
-      ['Ticket ID',  ticketId],
-      ['Circuit ID', circuitId],
-      ['Site Name',  siteName],
+      ['Customer',          'Amazon Leo'],
+      ['Ticket ID',         ticketId],
+      ['Amazon Leo Ticket', amazonLeoTicket],
+      ['Circuit ID',        circuitId],
+      ['Site Name',         siteName],
     ];
 
     rows.forEach((row, i) => {
