@@ -31,17 +31,17 @@ function animateClientCards() {
 }
 
 function openRFO() {
-  document.getElementById('rfo-frame').src = 'rfo/index.html';
+  document.getElementById('rfo-frame').src = 'rfo/index.html?v=' + Date.now();
   showPage('pg-rfo');
 }
 
 function openLOA() {
-  document.getElementById('loa-frame').src = 'loa/index.html';
+  document.getElementById('loa-frame').src = 'loa/index.html?v=' + Date.now();
   showPage('pg-loa');
 }
 
 function openRFOGeneric() {
-  document.getElementById('rfo-generic-frame').src = 'rfo-generic/index.html';
+  document.getElementById('rfo-generic-frame').src = 'rfo-generic/index.html?v=' + Date.now();
   showPage('pg-rfo-generic');
 }
 
