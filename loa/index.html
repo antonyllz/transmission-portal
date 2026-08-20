@@ -215,6 +215,7 @@
           <option value="">Personalizado (preencher manualmente)</option>
           <option value="equinix-sp4">Equinix SP4</option>
           <option value="br-digital-fla-a01">BR Digital &ndash; FLA-A01</option>
+          <option value="cirion-fortaleza-fla-a02">Cirion Fortaleza &ndash; FLA-A02</option>
         </select>
         <span class="hint">Escolha um site para preencher os campos abaixo automaticamente &mdash; só falta a empresa</span>
       </div>
@@ -223,31 +224,19 @@
       <div class="field">
         <label>Site <span class="req">*</span></label>
         <input type="text" id="site" placeholder="Equinix SP4" />
+        <span class="hint">Usado no título do arquivo gerado</span>
       </div>
       <div class="field">
-        <label id="rackLabel">Rack <span class="req">*</span></label>
-        <input type="text" id="rack" placeholder="0209:0102" />
+        <label>Idioma do modelo</label>
+        <select id="templateLang">
+          <option value="en">Inglês</option>
+          <option value="pt">Português</option>
+        </select>
       </div>
       <div class="field" style="grid-column: 1 / -1;">
-        <label>Address <span class="req">*</span></label>
-        <input type="text" id="address" placeholder="Av. Ceci, 1900 - Res. Tambore, Barueri - SP, 06460-120" />
-      </div>
-      <div class="field">
-        <label id="ppLabel">PP <span class="req">*</span></label>
-        <input type="text" id="pp" placeholder="1405318" />
-      </div>
-      <div class="field" id="filaField" style="display:none;">
-        <label>Fila</label>
-        <input type="text" id="fila" placeholder="02" />
-      </div>
-      <div class="field">
-        <label id="connectorLabel">Connector Type</label>
-        <input type="text" id="connector" placeholder="LC" />
-      </div>
-      <div class="field">
-        <label id="portsLabel">Ports</label>
-        <input type="text" id="ports" placeholder="Next available" />
-        <span class="hint">Vazio = "Next available"</span>
+        <label>Bloco de instalação <span class="req">*</span></label>
+        <textarea id="blockText" rows="7" style="font-family: 'SF Mono', Menlo, monospace; font-size: 12.5px; resize: vertical;" placeholder="Uma linha por item, exatamente como deve aparecer no PDF"></textarea>
+        <span class="hint">Uma linha por item, em negrito no PDF &mdash; edite livremente se algum dado for diferente desta vez</span>
       </div>
     </div>
   </div>
@@ -289,57 +278,63 @@
   function clearErrors() { document.querySelectorAll('.error').forEach(e => e.classList.remove('error')); }
 
   function clearForm() {
-    ['company','site','address','rack','pp','ports','fila','connector'].forEach(id => document.getElementById(id).value = '');
+    ['company','site','blockText'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('crossConnect').value = 'one (1) single-mode optical fiber cross-connect(s)';
     document.getElementById('sitePreset').value = '';
-    applyPreset();
+    document.getElementById('templateLang').value = 'en';
     clearErrors();
     document.getElementById('toast').className = 'toast';
   }
 
+  // Each preset owns its own block lines verbatim — facility LOAs don't share a
+  // common field schema (some use Fila/Bastidor, some CAGE+RACK combined, etc.).
   const SITE_PRESETS = {
     'equinix-sp4': {
       lang: 'en',
       site: 'Equinix SP4',
-      address: 'Av. Ceci, 1900 - Res. Tambore, Barueri - SP, 06460-120',
-      rack: '0209:0102',
-      pp: '1405318',
-      ports: 'Next available',
-      connector: 'LC',
+      blockLines: [
+        'Site: Equinix SP4',
+        'Address: Av. Ceci, 1900 - Res. Tambore, Barueri - SP, 06460-120',
+        'Company: SITECNET INFORMATICA LTDA – ME (Tely)',
+        'Rack: 0209:0102',
+        'PP: 1405318',
+        'Ports: Next available',
+        'Connector Type: LC',
+      ],
     },
     'br-digital-fla-a01': {
       lang: 'pt',
-      site: 'IDC BRFIBRA',
-      address: 'Rua Dr. Ratisbona, 75 - Fatima, Fortaleza, CE 60411-220',
-      pp: 'FLA53075315A',
-      fila: '02',
-      rack: '04',
-      connector: 'LC-UPC',
-      ports: 'Próxima disponível',
+      site: 'BR Digital - FLA-A01',
+      blockLines: [
+        'IDC BRFIBRA',
+        'Rua Dr. Ratisbona, 75 - Fatima, Fortaleza, CE 60411-220',
+        'ID do Colocation: FLA53075315A',
+        'Fila: 02',
+        'Bastidor: 04',
+        'Tipo de conector: LC-UPC',
+        'Posição: Próxima disponível',
+      ],
+    },
+    'cirion-fortaleza-fla-a02': {
+      lang: 'pt',
+      site: 'Cirion Fortaleza - FLA-A02',
+      blockLines: [
+        'Cirion Technologies Fortaleza',
+        'Avenida Dioguinho 2950, Fortaleza, CE - Ceará, Brazil',
+        'CAGE C, RACK RR010501.04C',
+        'Tipo de conector: LC-UPC',
+        'Posição: Próxima disponível',
+      ],
     },
   };
-
-  let currentLang = 'en';
 
   function applyPreset() {
     const key = document.getElementById('sitePreset').value;
     const preset = SITE_PRESETS[key];
-    currentLang = preset ? preset.lang : 'en';
-
-    document.getElementById('filaField').style.display = currentLang === 'pt' ? 'flex' : 'none';
-    document.getElementById('rackLabel').innerHTML = (currentLang === 'pt' ? 'Bastidor' : 'Rack') + ' <span class="req">*</span>';
-    document.getElementById('ppLabel').innerHTML = (currentLang === 'pt' ? 'ID do Colocation' : 'PP') + ' <span class="req">*</span>';
-    document.getElementById('portsLabel').textContent = currentLang === 'pt' ? 'Posição' : 'Ports';
-    document.getElementById('connectorLabel').textContent = currentLang === 'pt' ? 'Tipo de conector' : 'Connector Type';
-
     if (!preset) return;
     document.getElementById('site').value = preset.site;
-    document.getElementById('address').value = preset.address;
-    document.getElementById('rack').value = preset.rack;
-    document.getElementById('pp').value = preset.pp;
-    document.getElementById('ports').value = preset.ports;
-    document.getElementById('connector').value = preset.connector;
-    document.getElementById('fila').value = preset.fila || '';
+    document.getElementById('templateLang').value = preset.lang;
+    document.getElementById('blockText').value = preset.blockLines.join('\n');
     clearErrors();
   }
 
@@ -378,22 +373,16 @@
     clearErrors();
     let err = false;
 
-    const requiredIds = ['company','crossConnect','site','address','rack','pp','connector'];
-    if (currentLang === 'pt') requiredIds.push('fila');
-    requiredIds.forEach(id => {
+    ['company','crossConnect','site','blockText'].forEach(id => {
       if (!v(id)) { markError(id); err = true; }
     });
     if (err) { showToast('Preencha todos os campos obrigatórios.', 'error-msg'); return; }
 
+    const currentLang  = document.getElementById('templateLang').value;
     const company      = v('company');
     const crossConnect = v('crossConnect');
     const site         = v('site');
-    const address      = v('address');
-    const rack         = v('rack');
-    const pp           = v('pp');
-    const connector    = v('connector');
-    const fila         = v('fila');
-    const ports        = v('ports') || (currentLang === 'pt' ? 'Próxima disponível' : 'Next available');
+    const blockLines   = v('blockText').split('\n').map(l => l.trim()).filter(l => l.length);
     const dateStr      = currentLang === 'pt' ? fmtDatePt(new Date()) : fmtDate(new Date());
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -440,23 +429,6 @@
     // ── FACILITY BLOCK ──
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    const blockLines = currentLang === 'pt' ? [
-      site,
-      address,
-      `ID do Colocation: ${pp}`,
-      `Fila: ${fila}`,
-      `Bastidor: ${rack}`,
-      `Tipo de conector: ${connector}`,
-      `Posição: ${ports}`,
-    ] : [
-      `Site: ${site}`,
-      `Address: ${address}`,
-      `Company: SITECNET INFORMATICA LTDA – ME (Tely)`,
-      `Rack: ${rack}`,
-      `PP: ${pp}`,
-      `Ports: ${ports}`,
-      `Connector Type: ${connector}`,
-    ];
     blockLines.forEach(line => {
       const wrapped = doc.splitTextToSize(line, cW);
       wrapped.forEach(w => { doc.text(w, mL, cy); cy += 6; });
