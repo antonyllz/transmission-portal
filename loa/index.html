@@ -228,7 +228,7 @@
       </div>
       <div class="field">
         <label>Idioma do modelo</label>
-        <select id="templateLang">
+        <select id="templateLang" onchange="syncCrossConnectDefault(this.value)">
           <option value="en">Inglês</option>
           <option value="pt">Português</option>
         </select>
@@ -328,6 +328,21 @@
     },
   };
 
+  const CROSS_CONNECT_DEFAULTS = {
+    en: 'one (1) single-mode optical fiber cross-connect(s)',
+    pt: 'uma (1) conexão de fibra óptica monomodo',
+  };
+
+  // Swaps the Cross-Connect field to the other language's default text —
+  // but only if it still holds a known default, so custom edits (e.g. "two (2)...")
+  // are never overwritten.
+  function syncCrossConnectDefault(newLang) {
+    const field = document.getElementById('crossConnect');
+    if (Object.values(CROSS_CONNECT_DEFAULTS).includes(field.value.trim())) {
+      field.value = CROSS_CONNECT_DEFAULTS[newLang];
+    }
+  }
+
   function applyPreset() {
     const key = document.getElementById('sitePreset').value;
     const preset = SITE_PRESETS[key];
@@ -335,6 +350,7 @@
     document.getElementById('site').value = preset.site;
     document.getElementById('templateLang').value = preset.lang;
     document.getElementById('blockText').value = preset.blockLines.join('\n');
+    syncCrossConnectDefault(preset.lang);
     clearErrors();
   }
 
@@ -380,8 +396,8 @@
 
     const currentLang  = document.getElementById('templateLang').value;
     const company      = v('company');
+    const companyDot   = company + (company.endsWith('.') ? '' : '.');
     const crossConnect = v('crossConnect');
-    const site         = v('site');
     const blockLines   = v('blockText').split('\n').map(l => l.trim()).filter(l => l.length);
     const dateStr      = currentLang === 'pt' ? fmtDatePt(new Date()) : fmtDate(new Date());
 
@@ -412,13 +428,15 @@
       cy = richText(doc, [
         { text: 'Esta carta autoriza a ', bold: false },
         { text: company, bold: true },
-        { text: ' a solicitar uma conexão de fibra óptica monomodo para a seguinte instalação da ', bold: false },
+        { text: ' a solicitar ', bold: false },
+        { text: crossConnect, bold: true },
+        { text: ' para a seguinte instalação da ', bold: false },
         { text: 'SITECNET INFORMATICA LTDA (TELY):', bold: true },
       ], mL, cy, cW, 5.8, 10) + 6;
     } else {
       cy = richText(doc, [
         { text: 'This Letter of Authorization (LOA) authorizes ', bold: false },
-        { text: company + '.', bold: true },
+        { text: companyDot, bold: true },
         { text: ' to request and install ', bold: false },
         { text: crossConnect, bold: true },
         { text: ' at the following facility operated by ', bold: false },
@@ -439,12 +457,12 @@
     if (currentLang === 'pt') {
       cy = richText(doc, [
         { text: 'Fica mutuamente entendido que estes novos serviços serão cobrados diretamente da ', bold: false },
-        { text: company + '.', bold: true },
+        { text: companyDot, bold: true },
       ], mL, cy, cW, 5.8, 10) + 8;
     } else {
       cy = richText(doc, [
         { text: 'It is understood and agreed that all services related to these cross-connects will be billed directly to ', bold: false },
-        { text: company + '.', bold: true },
+        { text: companyDot, bold: true },
       ], mL, cy, cW, 5.8, 10) + 8;
     }
 
@@ -469,9 +487,9 @@
       ], mL, cy, cW, 5.8, 10);
     }
 
-    const fileSite = site.replace(/[^a-zA-Z0-9]+/g, '_');
-    doc.save(`LOA_${fileSite}.pdf`);
-    showToast(`✓ LOA_${fileSite}.pdf`);
+    const fileCompany = company.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    doc.save(`LOA_${fileCompany}.pdf`);
+    showToast(`✓ LOA_${fileCompany}.pdf`);
   }
 </script>
 </body>
