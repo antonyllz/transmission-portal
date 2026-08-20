@@ -208,13 +208,24 @@
 
   <div class="card-section">
     <div class="section-label">Facility</div>
+    <div class="field-grid full" style="gap:14px; margin-bottom:18px;">
+      <div class="field">
+        <label>Site pré-definido</label>
+        <select id="sitePreset" onchange="applyPreset()">
+          <option value="">Personalizado (preencher manualmente)</option>
+          <option value="equinix-sp4">Equinix SP4</option>
+          <option value="br-digital-fla-a01">BR Digital &ndash; FLA-A01</option>
+        </select>
+        <span class="hint">Escolha um site para preencher os campos abaixo automaticamente &mdash; só falta a empresa</span>
+      </div>
+    </div>
     <div class="field-grid">
       <div class="field">
         <label>Site <span class="req">*</span></label>
         <input type="text" id="site" placeholder="Equinix SP4" />
       </div>
       <div class="field">
-        <label>Rack <span class="req">*</span></label>
+        <label id="rackLabel">Rack <span class="req">*</span></label>
         <input type="text" id="rack" placeholder="0209:0102" />
       </div>
       <div class="field" style="grid-column: 1 / -1;">
@@ -222,11 +233,19 @@
         <input type="text" id="address" placeholder="Av. Ceci, 1900 - Res. Tambore, Barueri - SP, 06460-120" />
       </div>
       <div class="field">
-        <label>PP <span class="req">*</span></label>
+        <label id="ppLabel">PP <span class="req">*</span></label>
         <input type="text" id="pp" placeholder="1405318" />
       </div>
+      <div class="field" id="filaField" style="display:none;">
+        <label>Fila</label>
+        <input type="text" id="fila" placeholder="02" />
+      </div>
       <div class="field">
-        <label>Ports</label>
+        <label id="connectorLabel">Connector Type</label>
+        <input type="text" id="connector" placeholder="LC" />
+      </div>
+      <div class="field">
+        <label id="portsLabel">Ports</label>
         <input type="text" id="ports" placeholder="Next available" />
         <span class="hint">Vazio = "Next available"</span>
       </div>
@@ -270,15 +289,68 @@
   function clearErrors() { document.querySelectorAll('.error').forEach(e => e.classList.remove('error')); }
 
   function clearForm() {
-    ['company','site','address','rack','pp','ports'].forEach(id => document.getElementById(id).value = '');
+    ['company','site','address','rack','pp','ports','fila','connector'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('crossConnect').value = 'one (1) single-mode optical fiber cross-connect(s)';
+    document.getElementById('sitePreset').value = '';
+    applyPreset();
     clearErrors();
     document.getElementById('toast').className = 'toast';
+  }
+
+  const SITE_PRESETS = {
+    'equinix-sp4': {
+      lang: 'en',
+      site: 'Equinix SP4',
+      address: 'Av. Ceci, 1900 - Res. Tambore, Barueri - SP, 06460-120',
+      rack: '0209:0102',
+      pp: '1405318',
+      ports: 'Next available',
+      connector: 'LC',
+    },
+    'br-digital-fla-a01': {
+      lang: 'pt',
+      site: 'IDC BRFIBRA',
+      address: 'Rua Dr. Ratisbona, 75 - Fatima, Fortaleza, CE 60411-220',
+      pp: 'FLA53075315A',
+      fila: '02',
+      rack: '04',
+      connector: 'LC-UPC',
+      ports: 'Próxima disponível',
+    },
+  };
+
+  let currentLang = 'en';
+
+  function applyPreset() {
+    const key = document.getElementById('sitePreset').value;
+    const preset = SITE_PRESETS[key];
+    currentLang = preset ? preset.lang : 'en';
+
+    document.getElementById('filaField').style.display = currentLang === 'pt' ? 'flex' : 'none';
+    document.getElementById('rackLabel').innerHTML = (currentLang === 'pt' ? 'Bastidor' : 'Rack') + ' <span class="req">*</span>';
+    document.getElementById('ppLabel').innerHTML = (currentLang === 'pt' ? 'ID do Colocation' : 'PP') + ' <span class="req">*</span>';
+    document.getElementById('portsLabel').textContent = currentLang === 'pt' ? 'Posição' : 'Ports';
+    document.getElementById('connectorLabel').textContent = currentLang === 'pt' ? 'Tipo de conector' : 'Connector Type';
+
+    if (!preset) return;
+    document.getElementById('site').value = preset.site;
+    document.getElementById('address').value = preset.address;
+    document.getElementById('rack').value = preset.rack;
+    document.getElementById('pp').value = preset.pp;
+    document.getElementById('ports').value = preset.ports;
+    document.getElementById('connector').value = preset.connector;
+    document.getElementById('fila').value = preset.fila || '';
+    clearErrors();
   }
 
   function fmtDate(d) {
     const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+
+  function fmtDatePt(d) {
+    const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
   }
 
   // Renders mixed bold/normal segments with word-wrap, returns the y position after the last line.
@@ -306,7 +378,9 @@
     clearErrors();
     let err = false;
 
-    ['company','crossConnect','site','address','rack','pp'].forEach(id => {
+    const requiredIds = ['company','crossConnect','site','address','rack','pp','connector'];
+    if (currentLang === 'pt') requiredIds.push('fila');
+    requiredIds.forEach(id => {
       if (!v(id)) { markError(id); err = true; }
     });
     if (err) { showToast('Preencha todos os campos obrigatórios.', 'error-msg'); return; }
@@ -317,8 +391,10 @@
     const address      = v('address');
     const rack         = v('rack');
     const pp           = v('pp');
-    const ports        = v('ports') || 'Next available';
-    const dateStr      = fmtDate(new Date());
+    const connector    = v('connector');
+    const fila         = v('fila');
+    const ports        = v('ports') || (currentLang === 'pt' ? 'Próxima disponível' : 'Next available');
+    const dateStr      = currentLang === 'pt' ? fmtDatePt(new Date()) : fmtDate(new Date());
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297;
@@ -332,37 +408,54 @@
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(20, 20, 20);
-    doc.text('LETTER OF AUTHORIZATION (LOA)', mL, hH + 8);
+    doc.text(currentLang === 'pt' ? 'CARTA DE AUTORIZAÇÃO (LOA)' : 'LETTER OF AUTHORIZATION (LOA)', mL, hH + 8);
 
     // ── DATE ──
     let cy = hH + 20;
     doc.setTextColor(20, 20, 20);
     cy = richText(doc, [
-      { text: 'Date: ', bold: true },
+      { text: currentLang === 'pt' ? 'Data: ' : 'Date: ', bold: true },
       { text: dateStr, bold: false },
     ], mL, cy, cW, 5.5, 10.5) + 4;
 
     // ── INTRO PARAGRAPH ──
-    cy = richText(doc, [
-      { text: 'This Letter of Authorization (LOA) authorizes ', bold: false },
-      { text: company + '.', bold: true },
-      { text: ' to request and install ', bold: false },
-      { text: crossConnect, bold: true },
-      { text: ' at the following facility operated by ', bold: false },
-      { text: 'SITECNET INFORMATICA LTDA (Tely):', bold: true },
-    ], mL, cy, cW, 5.8, 10) + 6;
+    if (currentLang === 'pt') {
+      cy = richText(doc, [
+        { text: 'Esta carta autoriza a ', bold: false },
+        { text: company, bold: true },
+        { text: ' a solicitar uma conexão de fibra óptica monomodo para a seguinte instalação da ', bold: false },
+        { text: 'SITECNET INFORMATICA LTDA (TELY):', bold: true },
+      ], mL, cy, cW, 5.8, 10) + 6;
+    } else {
+      cy = richText(doc, [
+        { text: 'This Letter of Authorization (LOA) authorizes ', bold: false },
+        { text: company + '.', bold: true },
+        { text: ' to request and install ', bold: false },
+        { text: crossConnect, bold: true },
+        { text: ' at the following facility operated by ', bold: false },
+        { text: 'SITECNET INFORMATICA LTDA (Tely):', bold: true },
+      ], mL, cy, cW, 5.8, 10) + 6;
+    }
 
     // ── FACILITY BLOCK ──
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    const blockLines = [
+    const blockLines = currentLang === 'pt' ? [
+      site,
+      address,
+      `ID do Colocation: ${pp}`,
+      `Fila: ${fila}`,
+      `Bastidor: ${rack}`,
+      `Tipo de conector: ${connector}`,
+      `Posição: ${ports}`,
+    ] : [
       `Site: ${site}`,
       `Address: ${address}`,
       `Company: SITECNET INFORMATICA LTDA – ME (Tely)`,
       `Rack: ${rack}`,
       `PP: ${pp}`,
       `Ports: ${ports}`,
-      `Connector Type: LC`,
+      `Connector Type: ${connector}`,
     ];
     blockLines.forEach(line => {
       const wrapped = doc.splitTextToSize(line, cW);
@@ -371,10 +464,17 @@
     cy += 4;
 
     // ── BILLING PARAGRAPH ──
-    cy = richText(doc, [
-      { text: 'It is understood and agreed that all services related to these cross-connects will be billed directly to ', bold: false },
-      { text: company + '.', bold: true },
-    ], mL, cy, cW, 5.8, 10) + 8;
+    if (currentLang === 'pt') {
+      cy = richText(doc, [
+        { text: 'Fica mutuamente entendido que estes novos serviços serão cobrados diretamente da ', bold: false },
+        { text: company + '.', bold: true },
+      ], mL, cy, cW, 5.8, 10) + 8;
+    } else {
+      cy = richText(doc, [
+        { text: 'It is understood and agreed that all services related to these cross-connects will be billed directly to ', bold: false },
+        { text: company + '.', bold: true },
+      ], mL, cy, cW, 5.8, 10) + 8;
+    }
 
     // ── SIGNATURE IMAGE ──
     cy += 14;
@@ -383,11 +483,19 @@
     cy += sigH + 14;
 
     // ── VALIDITY PARAGRAPH ──
-    richText(doc, [
-      { text: 'This LOA is valid for ', bold: false },
-      { text: '30 (thirty) calendar days', bold: true },
-      { text: ' from the date stated above.', bold: false },
-    ], mL, cy, cW, 5.8, 10);
+    if (currentLang === 'pt') {
+      richText(doc, [
+        { text: 'Esta LOA expira ', bold: false },
+        { text: '30 dias corridos', bold: true },
+        { text: ' a partir da data indicada acima.', bold: false },
+      ], mL, cy, cW, 5.8, 10);
+    } else {
+      richText(doc, [
+        { text: 'This LOA is valid for ', bold: false },
+        { text: '30 (thirty) calendar days', bold: true },
+        { text: ' from the date stated above.', bold: false },
+      ], mL, cy, cW, 5.8, 10);
+    }
 
     const fileSite = site.replace(/[^a-zA-Z0-9]+/g, '_');
     doc.save(`LOA_${fileSite}.pdf`);
