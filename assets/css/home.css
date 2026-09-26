@@ -258,3 +258,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ic-cal .ring, .ic-cal .today, .ic-globe .mer { animation: none; }
 }
+
+[data-theme="dark"] .card-thumb.empty { background: #2c2c2e; }
+[data-theme="dark"] .card-thumb.empty svg { stroke: #58585d; }

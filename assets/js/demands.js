@@ -88,47 +88,70 @@ function saveNoteAdd(e) {
 }
 
 /* ── NOTE BOARD RENDER ── */
+var dmdExpanded = {};   /* id -> true: stays open across re-renders (polling) */
+
+var DMD_ICON = {
+  clock:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
+  inf:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.2 8.5a4.9 4.9 0 110 7c-2.4-2.4-3.7-4.6-6.2-7a4.9 4.9 0 100 7c2.5-2.4 3.8-4.6 6.2-7z"/></svg>',
+  chat:   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  chev:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+};
+
+function dmdAge(iso) {
+  var m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 1)  return 'agora';
+  if (m < 60) return 'h\u00e1 ' + m + ' min';
+  var h = Math.floor(m / 60);
+  if (h < 24) return 'h\u00e1 ' + h + 'h';
+  var d = Math.floor(h / 24);
+  return 'h\u00e1 ' + d + (d === 1 ? ' dia' : ' dias');
+}
+
+/* time state of a demand: remaining seconds, share of the deadline used, color, label */
+function dmdState(d) {
+  var p = PRIO[d.priority] || PRIO.baixa;
+  if (d.duration == null) return { p: p, open: true, pct: 0, color: p.bar, text: 'Sem prazo', cls: 'free' };
+  var elapsed = Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 1000);
+  var rem = Math.max(0, d.duration - elapsed), pct = Math.min(100, elapsed / d.duration * 100);
+  if (rem <= 0) return { p: p, pct: 100, color: '#dc2626', text: 'Expirado', cls: 'late' };
+  return { p: p, pct: pct, color: rem < 1800 ? '#dc2626' : p.bar, text: fmtCountdown(rem), cls: rem < 1800 ? 'soon' : '' };
+}
+
 function renderNoteBoard() {
   var grid = document.getElementById('notes-grid');
   if (!grid) return;
 
-  /* remove existing demand notes */
+  /* don't wipe a comment being typed */
+  var act = document.activeElement;
+  if (act && act.classList && act.classList.contains('note-comment-input') && act.value) return;
+
   grid.querySelectorAll('.note-demand').forEach(function(n) { n.remove(); });
 
-  var all  = dmdGetAll();
-  var now  = Date.now();
-
-  all.forEach(function(d, i) {
-    var p          = PRIO[d.priority] || PRIO.baixa;
-    var noDeadline = d.duration == null;
-    var rem        = 0, tc, timerText;
-    if (noDeadline) {
-      tc = p.bar;
-      timerText = 'Sem prazo';
-    } else {
-      var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
-      rem = Math.max(0, d.duration - elapsed);
-      tc  = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : p.bar);
-      timerText = fmtCountdown(rem);
-    }
-
+  dmdGetAll().forEach(function(d, i) {
+    var st = dmdState(d), nc = (d.comments || []).length;
     var card = document.createElement('div');
-    card.className = 'note-card note-demand note-pop';
+    card.className = 'note-card note-demand note-pop ' + st.cls + (dmdExpanded[d.id] ? ' expanded' : '');
     card.dataset.id = d.id;
+    card.style.setProperty('--pc', st.p.bar);
     card.style.animationDelay = (i * 0.06) + 's';
-    card.onclick = function() { card.classList.toggle('expanded'); };
+    card.onclick = function() {
+      card.classList.toggle('expanded');
+      if (card.classList.contains('expanded')) dmdExpanded[d.id] = true; else delete dmdExpanded[d.id];
+    };
     card.innerHTML =
-        '<div class="note-stripe" style="background:' + p.bar + '"></div>'
-      + '<div class="note-body">'
-      +   '<div class="note-prio-badge" style="color:' + p.bar + '">' + p.label + '</div>'
+        '<div class="note-body">'
+      +   '<div class="note-top">'
+      +     '<span class="note-prio"><i></i>' + st.p.label + '</span>'
+      +     '<span class="note-timer" id="ntimer-' + d.id + '">'
+      +       (st.cls === 'free' ? DMD_ICON.inf : DMD_ICON.clock) + '<b>' + st.text + '</b>'
+      +     '</span>'
+      +   '</div>'
       +   '<div class="note-desc">' + esc(d.description) + '</div>'
+      +   '<div class="note-track' + (st.cls === 'free' ? ' free' : '') + '"><span id="nbar-' + d.id + '" style="width:' + st.pct.toFixed(1) + '%"></span></div>'
       +   '<div class="note-footer">'
-      +     '<span class="note-timer" id="ntimer-' + d.id + '" style="color:' + tc + '">'
-      +       timerText
-      +     '</span>'
-      +     '<span class="note-chevron">'
-      +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
-      +     '</span>'
+      +     '<span class="note-meta">Criada ' + dmdAge(d.createdAt)
+      +       (nc ? '<span class="note-cc">' + DMD_ICON.chat + nc + '</span>' : '') + '</span>'
+      +     '<span class="note-chevron">' + DMD_ICON.chev + '</span>'
       +   '</div>'
       +   '<div class="note-actions">'
       +     '<div class="note-comments" onclick="event.stopPropagation()">'
@@ -141,14 +164,15 @@ function renderNoteBoard() {
       +         '</button>'
       +       '</div>'
       +     '</div>'
-      +     '<button class="note-act note-act-done" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); finishDemand(this.dataset.id)">'
-      +       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
-      +       'Demanda finalizada'
-      +     '</button>'
-      +     '<button class="note-act note-act-del" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); deleteNote(this.dataset.id)">'
-      +       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-      +       'Excluir demanda'
-      +     '</button>'
+      +     '<div class="note-act-row">'
+      +       '<button class="note-act note-act-done" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); finishDemand(this.dataset.id)">'
+      +         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      +         'Finalizar'
+      +       '</button>'
+      +       '<button class="note-act note-act-del" data-id="' + esc(d.id) + '" onclick="event.stopPropagation(); deleteNote(this.dataset.id)" aria-label="Excluir demanda" title="Excluir demanda">'
+      +         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+      +       '</button>'
+      +     '</div>'
       +   '</div>'
       + '</div>';
     grid.appendChild(card);
@@ -184,6 +208,12 @@ function addComment(id) {
   dmdSave(all);
 
   input.value = '';
+  var cardEl = document.querySelector('.note-demand[data-id="' + id + '"] .note-meta');
+  if (cardEl) {
+    var cc = cardEl.querySelector('.note-cc');
+    if (!cc) { cc = document.createElement('span'); cc.className = 'note-cc'; cardEl.appendChild(cc); }
+    cc.innerHTML = DMD_ICON.chat + d.comments.length;
+  }
   var list = document.getElementById('ncomments-' + id);
   if (list) {
     list.innerHTML = buildCommentsHtml(d.comments);
@@ -195,6 +225,7 @@ function addComment(id) {
 function dmdRemove(id, done) {
   var card   = document.querySelector('.note-demand[data-id="' + id + '"]');
   var commit = function() {
+    delete dmdExpanded[id];
     dmdSave(dmdGetAll().filter(function(d) { return d.id !== id; }));
     if (card) card.remove();
     if (typeof notifOpen !== 'undefined' && notifOpen) renderNotifDemands();
@@ -219,15 +250,14 @@ function finishDemand(id) { dmdRemove(id, true); }
 
 /* ── TICK DEMAND TIMERS ── */
 function tickNoteTimers() {
-  var all = dmdGetAll();
-  var now = Date.now();
-  all.forEach(function(d) {
+  dmdGetAll().forEach(function(d) {
+    if (d.duration == null) return;
     var el = document.getElementById('ntimer-' + d.id);
-    if (!el || d.duration == null) return;
-    var elapsed = Math.floor((now - new Date(d.createdAt).getTime()) / 1000);
-    var rem     = Math.max(0, d.duration - elapsed);
-    var p       = PRIO[d.priority] || PRIO.baixa;
-    el.textContent  = fmtCountdown(rem);
-    el.style.color  = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : p.bar);
+    if (!el) return;
+    var st = dmdState(d), b = el.querySelector('b'), bar = document.getElementById('nbar-' + d.id);
+    if (b) b.textContent = st.text;
+    if (bar) bar.style.width = st.pct.toFixed(1) + '%';
+    var card = el.closest('.note-demand');
+    if (card) { card.classList.toggle('soon', st.cls === 'soon'); card.classList.toggle('late', st.cls === 'late'); }
   });
 }

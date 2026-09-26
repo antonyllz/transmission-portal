@@ -186,3 +186,84 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .note-pop { animation: note-pop .3s cubic-bezier(.34,1.2,.64,1) both; }
+
+/* ═══════════════════
+   DEMAND CARD v2 — priority rail, countdown chip, deadline progress
+   ═══════════════════ */
+.note-demand {
+  min-height: 0; border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.05);
+}
+.note-demand::before {   /* priority rail */
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--pc);
+}
+.note-demand::after {    /* faint priority wash from the rail */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--pc) 7%, transparent), transparent 45%);
+}
+.note-demand .note-body { position: relative; z-index: 1; padding: 14px 16px 12px 18px; gap: 10px; }
+.note-demand:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--pc) 25%, transparent), 0 10px 28px rgba(0,0,0,.1); }
+
+.note-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.note-prio {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--pc);
+}
+.note-prio i { width: 7px; height: 7px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 18%, transparent); }
+.note-demand .note-timer {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 980px;
+  font-size: 11.5px; font-weight: 700; color: var(--pc);
+  background: color-mix(in srgb, var(--pc) 10%, #fff);
+}
+.note-demand .note-timer b { font-weight: 700; }
+.note-demand .note-desc { font-size: 13.5px; line-height: 1.5; color: var(--text); }
+
+/* deadline used so far */
+.note-track { height: 4px; border-radius: 4px; background: rgba(0,0,0,.06); overflow: hidden; }
+.note-track span {
+  display: block; height: 100%; border-radius: 4px; background: var(--pc);
+  transition: width 1s linear, background .4s;
+}
+.note-track.free span {   /* no deadline: a calm moving pattern instead of progress */
+  width: 100% !important; opacity: .35;
+  background: repeating-linear-gradient(90deg, var(--pc) 0 10px, transparent 10px 18px);
+  background-size: 36px 100%; animation: note-free 2.4s linear infinite;
+}
+@keyframes note-free { to { background-position: 36px 0; } }
+
+.note-demand .note-footer { margin-top: 0; }
+.note-meta { display: inline-flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--light); }
+.note-cc { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-weight: 600; }
+
+/* under 30 min: the chip turns red and breathes */
+.note-demand.soon .note-timer { color: #dc2626; background: rgba(220,38,38,.1); }
+.note-demand.soon .note-track span { background: #dc2626; }
+.note-demand.soon .note-timer { animation: note-urgent 1.6s ease-in-out infinite; }
+@keyframes note-urgent { 50% { box-shadow: 0 0 0 4px rgba(220,38,38,.14); } }
+/* expired: solid red chip, text dims slightly */
+.note-demand.late .note-timer { color: #fff; background: #dc2626; }
+.note-demand.late .note-track span { background: #dc2626; }
+.note-demand.late .note-desc { color: var(--muted); }
+
+/* expanded: actions side by side, delete as an icon */
+.note-demand .note-actions { gap: 10px; }
+.note-demand.expanded .note-actions { margin-top: 2px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.06); max-height: 360px; }
+.note-act-row { display: flex; gap: 8px; }
+.note-act-row .note-act-done { flex: 1; }
+.note-act-row .note-act-del { width: 38px; flex: none; padding: 8px 0; }
+
+/* side column: one card per row, compact "new demand" bar */
+.home-side .notes-grid { grid-template-columns: 1fr !important; gap: 10px; }
+.home-side .note-add { min-height: 0; padding: 12px 14px; flex-direction: row; justify-content: flex-start; }
+.home-side .note-add .nadd-default { flex-direction: row !important; gap: 12px !important; }
+.home-side .note-add .nadd-icon { width: 32px; height: 32px; }
+.home-side .note-add.expanded { min-height: 0; padding: 14px; }
+
+[data-theme="dark"] .note-demand { border-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .note-demand .note-timer { background: color-mix(in srgb, var(--pc) 18%, #1c1c1e); }
+[data-theme="dark"] .note-demand.late .note-timer { background: #dc2626; color: #fff; }
+[data-theme="dark"] .note-track { background: rgba(255,255,255,.08); }
+[data-theme="dark"] .note-demand.expanded .note-actions { border-top-color: rgba(255,255,255,.07); }
+@media (prefers-reduced-motion: reduce) {
+  .note-track.free span, .note-demand.soon .note-timer { animation: none; }
+}
