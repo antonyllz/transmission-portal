@@ -314,69 +314,6 @@ function homeBindCards() {
   });
 }
 
-/* ── CLIENT LOGOS ──
-   Each card logo was split into a clean background, the wordmark and the symbol
-   (tools: logo-split, measured letter by letter). The wordmark is typed one
-   letter at a time with a caret, then the symbol is drawn in. */
-var LOGO_ANIM = {
-  'amazon-leo': {   /* a·m·a·z·o·n · L·E·O — right edge of each glyph, % of the width */
-    start: 19, ends: [24.5, 34.17, 40.33, 45.83, 52, 58.33, 65.33, 71.33, 78.17], pauseAfter: 5,
-    caret: { top: 33.8, height: 13.1 }, order: 'text-mark'   /* image is 5:3, card 16:9 — adjusted for the crop */
-  },
-  'starlink': {     /* S·T·A·R·L·I·N·K */
-    start: 38, ends: [40, 43.13, 46.25, 49.63, 52.75, 54.63, 58.13, 61.88], pauseAfter: -1,
-    caret: { top: 63.8, height: 7.6 }, order: 'mark-text'
-  }
-};
-
-function logoPlay(el) {
-  var cfg = LOGO_ANIM[el.dataset.logo];
-  if (!cfg || el._playing) return;
-  var text = el.querySelector('.la-text'), mark = el.querySelector('.la-mark'), caret = el.querySelector('.la-caret');
-  if (HOME_REDUCED) { el.classList.add('la-done'); return; }
-  el._playing = true; el._last = Date.now();
-  (el._timers || []).forEach(clearTimeout);
-  var T = el._timers = [], at = function(ms, fn) { T.push(setTimeout(fn, ms)); };
-  var clip = function(end) { text.style.clipPath = 'inset(0 ' + (100 - end) + '% 0 ' + cfg.start + '%)'; };
-
-  el.classList.remove('la-done', 'la-mark-in');
-  clip(cfg.start);
-  caret.style.top = cfg.caret.top + '%'; caret.style.height = cfg.caret.height + '%';
-  caret.style.left = cfg.start + '%';
-
-  var t = 250;
-  var drawMark = function(ms) { at(ms, function() { el.classList.add('la-mark-in'); }); return ms + 900; };
-  if (cfg.order === 'mark-text') t = drawMark(t) - 350;
-  at(t, function() { caret.classList.add('on'); });
-  t += 380;
-  cfg.ends.forEach(function(end, i) {
-    t += 70 + Math.random() * 45 + (i === cfg.pauseAfter + 1 ? 170 : 0);   /* human-ish rhythm, beat at the space */
-    at(t, function() { clip(end); caret.style.left = (end + .6) + '%'; });
-  });
-  t += 520;
-  at(t, function() { caret.classList.remove('on'); });
-  if (cfg.order === 'text-mark') t = drawMark(t - 200);
-  at(t + 100, function() { el.classList.add('la-done'); text.style.clipPath = ''; el._playing = false; });
-}
-
-function logoBind() {
-  document.querySelectorAll('.logo-anim').forEach(function(el) {
-    if (HOME_REDUCED) { el.classList.add('la-done', 'la-mark-in'); return; }
-    var card = el.closest('.client-card');
-    if (card) card.addEventListener('mouseenter', function() {
-      if (!el._playing && Date.now() - (el._last || 0) > 6000) logoPlay(el);
-    });
-  });
-}
-
-/* play the logos as the client cards come in */
-function logoIntro() {
-  document.querySelectorAll('#pg-home .logo-anim').forEach(function(el, i) {
-    el._playing = false; el._last = 0;
-    setTimeout(function() { logoPlay(el); }, 450 + i * 260);
-  });
-}
-
 /* ── TOPBAR: lifts off the page once you scroll ── */
 function homeBindTopbar() {
   var tb = document.querySelector('.topbar');
@@ -391,7 +328,6 @@ function homeInit() {
   Object.keys(clientNets).forEach(function(k) { clientNets[k].init(); });
   homeBindCards();
   homeBindTopbar();
-  logoBind();
   homeReveal();
 }
 
@@ -400,7 +336,6 @@ function homeEnter() {
   heroNet.resize();
   heroNet.start();
   homeReveal();
-  logoIntro();
 }
 
 /* called whenever a client page is shown (see navigation.js) */
