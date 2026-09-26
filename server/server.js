@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════
    TRANSMISSION PORTAL — shared data API
    Plain Node http server, no dependencies.
-   Persists cases/demands as JSON files so every
+   Persists cases/demands/rmas/lambdas as JSON files so every
    user hitting the portal reads/writes the same data.
    ═══════════════════════════════════════ */
 'use strict';
@@ -17,7 +17,10 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const FILES = {
   cases:   path.join(DATA_DIR, 'cases.json'),
-  demands: path.join(DATA_DIR, 'demands.json')
+  demands: path.join(DATA_DIR, 'demands.json'),
+  rmas:    path.join(DATA_DIR, 'rmas.json'),
+  lambdas: path.join(DATA_DIR, 'lambdas.json'),
+  netpos:  path.join(DATA_DIR, 'netpos.json')
 };
 
 function readCollection(name) {
@@ -61,7 +64,7 @@ const server = http.createServer((req, res) => {
   const url   = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean); // ['api','cases']
 
-  if (parts[0] !== 'api' || (parts[1] !== 'cases' && parts[1] !== 'demands') || parts.length !== 2) {
+  if (parts[0] !== 'api' || !Object.prototype.hasOwnProperty.call(FILES, parts[1]) || parts.length !== 2) {
     send(res, 404, { error: 'Not found' });
     return;
   }

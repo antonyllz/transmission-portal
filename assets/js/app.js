@@ -12,7 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
   initClientSkeletons();
   dbSync().then(function() {
     updateBadge();
+    updateRmaToolCount();
+    updateLmbToolCount();
     renderNoteBoardWithSkeleton();
+    if (routeCurrentPath()) routeFromHash();
     dbStartPolling(8000);
   });
 
@@ -57,5 +60,7 @@ function onDbExternalUpdate() {
   if (home && home.classList.contains('active')) renderNoteBoard();
   var tlList = document.getElementById('pg-tl-list');
   if (tlList && tlList.classList.contains('active')) renderList();
+  rmaExternalRefresh();
+  lmbExternalRefresh();
   if (typeof notifOpen !== 'undefined' && notifOpen) { renderNotifDemands(); renderNotifList(); }
 }

@@ -260,3 +260,7 @@ input[type=time] { color-scheme: light; }
   .g2     { grid-template-columns: 1fr; }
   .wrap, .act-section, .wrap-md { padding-left: 16px; padding-right: 16px; }
 }
+
+/* ── CARDS AS LINKS (open in new tab) ── */
+a.act-card, a.client-card { text-decoration: none; color: inherit; }
+a.client-card { display: block; }
