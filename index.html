@@ -86,7 +86,7 @@
 <!-- ══════════════════════════════════════════
      HOME
 ══════════════════════════════════════════ -->
-<div id="pg-home" class="page active">
+<div id="pg-home" class="page fx active">
   <div class="home-hero">
     <canvas class="hero-net" id="hero-net" aria-hidden="true"></canvas>
     <div class="hero-inner">
@@ -215,34 +215,38 @@
 <!-- ══════════════════════════════════════════
      AMAZON LEO
 ══════════════════════════════════════════ -->
-<div id="pg-amazon-leo" class="page">
+<div id="pg-amazon-leo" class="page fx">
   <div class="cl-hero">
     <img src="assets/images/amazon-leo-banner.jpg" alt="Amazon Leo"/>
     <div class="ov"></div>
-    <button class="back-btn" onclick="showPage('pg-home')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back
-    </button>
-    <div class="cl-title"><h2>Amazon Leo</h2><p>Select an action below</p></div>
+    <canvas class="hero-net" id="cl-net-amazon-leo" aria-hidden="true"></canvas>
+    <div class="hero-inner">
+      <button class="back-btn" onclick="showPage('pg-home')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back</button>
+      <div class="ey"><span class="live-dot"></span>Client &middot; Reports &amp; tools</div>
+      <h2><span class="hl"><span>Amazon</span></span> <span class="hl"><span>Leo</span></span></h2>
+      <p>Select an action below</p>
+    </div>
   </div>
-  <div class="act-section">
-    <div class="act-lbl">Available Tools</div>
-    <div class="act-grid">
-      <a class="act-card" href="#/amazon-leo/rfo">
+  <div class="wrap fx-body">
+    <div class="sec-lbl" data-reveal><span class="sec-num">01</span>Available tools</div>
+    <div class="act-grid home-tools">
+      <a class="act-card" data-reveal style="--d:0s" href="#/amazon-leo/rfo">
         <div class="act-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg class="ic-doc" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline class="fold" points="14 2 14 8 20 8"/><line class="t" x1="8" y1="13" x2="16" y2="13"/><line class="t t2" x1="8" y1="17" x2="16" y2="17"/>
           </svg>
         </div>
         <div class="act-name">Generate RFO</div>
         <div class="act-desc">Create a Reason for Outage report and export as PDF</div>
         <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
       </a>
-      <a class="act-card" href="#/amazon-leo/timeline">
+      <a class="act-card" data-reveal style="--d:.06s" href="#/amazon-leo/timeline">
         <div class="act-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <svg class="ic-cal" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <rect class="pg" x="3" y="4" width="18" height="18" rx="2"/>
+            <line class="ring" x1="8" y1="2" x2="8" y2="6"/><line class="ring r2" x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/><circle class="today" cx="15.5" cy="15.5" r="1.6" fill="currentColor" stroke="none"/>
           </svg>
         </div>
         <div class="act-name">Case Timeline</div>
@@ -258,23 +262,26 @@
 <!-- ══════════════════════════════════════════
      STARLINK
 ══════════════════════════════════════════ -->
-<div id="pg-starlink" class="page">
+<div id="pg-starlink" class="page fx">
   <div class="cl-hero">
     <img src="assets/images/starlink-banner.jpg" alt="Starlink"/>
     <div class="ov"></div>
-    <button class="back-btn" onclick="showPage('pg-home')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back
-    </button>
-    <div class="cl-title"><h2>Starlink</h2><p>Select an action below</p></div>
+    <canvas class="hero-net" id="cl-net-starlink" aria-hidden="true"></canvas>
+    <div class="hero-inner">
+      <button class="back-btn" onclick="showPage('pg-home')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>Back</button>
+      <div class="ey"><span class="live-dot"></span>Client &middot; Reports &amp; tools</div>
+      <h2><span class="hl"><span>Starlink</span></span></h2>
+      <p>Select an action below</p>
+    </div>
   </div>
-  <div class="act-section">
-    <div class="act-lbl">Available Tools</div>
-    <div class="act-grid">
-      <div class="act-card cs">
+  <div class="wrap fx-body">
+    <div class="sec-lbl" data-reveal><span class="sec-num">01</span>Available tools</div>
+    <div class="act-grid home-tools">
+      <div class="act-card cs" data-reveal style="--d:0s">
         <div class="act-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg class="ic-globe" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+            <ellipse class="mer" cx="12" cy="12" rx="4.6" ry="10"/><ellipse class="mer m2" cx="12" cy="12" rx="4.6" ry="10"/>
           </svg>
         </div>
         <div class="act-name">Coming soon</div>

@@ -229,9 +229,6 @@ input[type=time] { color-scheme: light; }
   font-family: inherit; transition: background .15s;
 }
 .back-btn:hover { background: rgba(255,255,255,.25); }
-.cl-title { position: absolute; bottom: 20px; left: 28px; }
-.cl-title h2 { font-size: 22px; font-weight: 700; color: var(--white); letter-spacing: -.3px; }
-.cl-title p  { font-size: 13px; color: rgba(255,255,255,.7); margin-top: 3px; }
 
 /* ── ACTION CARDS ── */
 .act-section { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }

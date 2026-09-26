@@ -200,9 +200,12 @@ function lmbInitMap() {
 }
 
 /* quick views — the network spans NE and SE Brazil, too far apart to read at one zoom */
+/* Padtec ring in greater São Paulo — too dense to read from the Sudeste view */
+var LMB_SP_RING = ['SP-SPO-A01', 'SP-BRE-A02', 'SP-SPB-A01', 'SP-BRE-A01', 'SP-COA-A01'];
 var LMB_REGIONS = {
   ne:  { label: 'Nordeste', test: function(s) { return s.lat > -14; } },
   se:  { label: 'Sudeste',  test: function(s) { return s.lat < -18; } },
+  spo: { label: 'Anel SP',  test: function(s) { return LMB_SP_RING.indexOf(s.id) >= 0; } },
   all: { label: 'Tudo',     test: function() { return true; } }
 };
 function lmbFitRegion(k) {

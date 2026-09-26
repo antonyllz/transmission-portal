@@ -46,7 +46,7 @@
 .home-hero .hero-inner > p { font-size: 16px; color: rgba(255,255,255,.68); max-width: 420px; line-height: 1.5; }
 
 /* ── HERO ENTRANCE (runs each time home is shown) ── */
-.hero-in .ey, .hero-in .hero-inner > p { animation: hero-rise .7s cubic-bezier(.2,.7,.2,1) both; }
+.hero-in .ey, .hero-in .hero-inner > p, .hero-in .back-btn { animation: hero-rise .7s cubic-bezier(.2,.7,.2,1) both; }
 .hero-in .hl > span { animation: hero-mask .9s cubic-bezier(.2,.8,.2,1) both; }
 .hero-in .hl:nth-child(2) > span { animation-delay: .09s; }
 .hero-in .hero-inner > p { animation-delay: .22s; }
@@ -56,23 +56,23 @@
 @keyframes hero-fade { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── SECTION LABELS: number + a rule that draws in ── */
-#pg-home .sec-lbl { display: flex; align-items: center; gap: 10px; }
+.fx .sec-lbl { display: flex; align-items: center; gap: 10px; }
 .sec-num { font-variant-numeric: tabular-nums; color: var(--blue); opacity: .8; }
-#pg-home .sec-lbl::after {
+.fx .sec-lbl::after {
   content: ''; flex: 1; height: 1px; background: rgba(0,0,0,.07);
   transform-origin: left; transform: scaleX(0); transition: transform 1s cubic-bezier(.2,.7,.2,1) .15s;
 }
-#pg-home .sec-lbl.in::after { transform: scaleX(1); }
-[data-theme="dark"] #pg-home .sec-lbl::after { background: rgba(255,255,255,.08); }
+.fx .sec-lbl.in::after { transform: scaleX(1); }
+[data-theme="dark"] .fx .sec-lbl::after { background: rgba(255,255,255,.08); }
 
 /* ── SCROLL REVEAL ── */
-#pg-home [data-reveal] {
+.fx [data-reveal] {
   opacity: 0; transform: translateY(18px);
   transition: opacity .7s cubic-bezier(.2,.7,.2,1) var(--d, 0s), transform .7s cubic-bezier(.2,.7,.2,1) var(--d, 0s);
 }
-#pg-home [data-reveal].in { opacity: 1; transform: none; }
-#pg-home .act-card[data-reveal].in { transition-delay: 0s, 0s; }   /* hover stays snappy after the reveal */
-#pg-home .act-card[data-reveal].in:hover { transform: translateY(-3px); }
+.fx [data-reveal].in { opacity: 1; transform: none; }
+.fx .act-card[data-reveal].in { transition-delay: 0s, 0s; }   /* hover stays snappy after the reveal */
+.fx .act-card[data-reveal].in:hover { transform: translateY(-3px); }
 
 /* ── TOOL CARDS: cursor spotlight, icon fill, arrow nudge ── */
 .home-tools .act-card { position: relative; overflow: hidden; isolation: isolate; }
@@ -100,7 +100,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-in .ey, .hero-in .hero-inner > p, .hero-in .hl > span, .hero-in .hero-net, .live-dot::after { animation: none; }
-  #pg-home [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .fx [data-reveal] { opacity: 1; transform: none; transition: none; }
 }
 
 /* ── CLIENT CARDS ── */
@@ -195,4 +195,66 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ic-box, .ic-box .lid, .ic-net .e, .ic-net .n, .ic-doc .t, .ic-doc .fold { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ═══════════════════
+   CLIENT PAGES — same language as the home hero
+   ═══════════════════ */
+.fx-body { max-width: 1200px; padding-top: 44px; }
+
+.cl-hero {
+  height: auto; min-height: 320px; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 26px 0 60px; background: #081534;
+}
+.cl-hero img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%;
+  animation: cl-kenburns 28s ease-in-out infinite alternate;
+}
+#pg-amazon-leo .cl-hero img { object-position: center 72%; }
+@keyframes cl-kenburns { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.1) translate(-1.5%, -1%); } }
+.cl-hero .ov {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6,18,60,.92) 0%, rgba(6,30,110,.66) 42%, rgba(6,40,160,.22) 100%),
+    linear-gradient(to top, rgba(4,10,35,.55), rgba(4,10,35,0) 55%);
+}
+.cl-hero .hero-net { z-index: 0; }
+.cl-hero .hero-inner { width: 100%; }
+.cl-hero .back-btn { position: static; margin-bottom: 44px; }
+.cl-hero .ey { margin-bottom: 14px; }
+.cl-hero h2 {
+  font-size: clamp(32px, 4.6vw, 46px); font-weight: 700; color: #fff;
+  letter-spacing: -1.3px; line-height: 1.06; margin-bottom: 10px;
+}
+.cl-hero .hero-inner > p { font-size: 15px; color: rgba(255,255,255,.7); }
+.hero-in .back-btn { animation-delay: 0s; }
+.hero-in .ey { animation-delay: .05s; }
+@media (max-width: 760px) {
+  .cl-hero { min-height: 260px; padding-bottom: 44px; }
+  .cl-hero .back-btn { margin-bottom: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-hero img, .hero-in .back-btn { animation: none; }
+}
+
+/* Case Timeline: the calendar's rings lift in turn and today's dot pulses */
+.ic-cal .ring { animation: ic-ring 3.2s ease-in-out infinite; }
+.ic-cal .r2 { animation-delay: .18s; }
+.ic-cal .today { transform-origin: 50% 50%; animation: ic-today 3.2s ease-in-out infinite; }
+@keyframes ic-ring { 0%, 60%, 100% { transform: none; } 68% { transform: translateY(-2px); } 76% { transform: none; } }
+@keyframes ic-today { 0%, 100% { transform: scale(1); opacity: 1; } 40% { transform: scale(1.5); opacity: .55; } 70% { transform: scale(1); opacity: 1; } }
+
+/* Starlink: meridians sweep across so the globe seems to spin */
+.ic-globe .mer { transform-origin: 50% 50%; animation: ic-spin 3.6s linear infinite; }
+.ic-globe .m2 { animation-delay: -1.8s; }
+@keyframes ic-spin {
+  0%   { transform: scaleX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: scaleX(2.1); }
+  90%  { opacity: 1; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+.home-tools .act-card:hover .ic-cal .ring, .home-tools .act-card:hover .ic-cal .today { animation-duration: 1.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .ic-cal .ring, .ic-cal .today, .ic-globe .mer { animation: none; }
 }

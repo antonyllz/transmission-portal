@@ -1,5 +1,5 @@
 /* ═══════════════════════════════
-   HOME — hero network, scroll reveal, card motion
+   HOME + CLIENT PAGES — hero network, scroll reveal, card motion
    ═══════════════════════════════ */
 
 var HOME_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -8,13 +8,14 @@ var HOME_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-moti
    A generated optical mesh in two depth layers: gently curved fibers, light
    pulses that hop node to node along whole routes (tails follow the curves),
    nodes that flare as a pulse passes, and technical words typed into the scene.
-   Runs only while the hero is on screen. */
-var heroNet = (function() {
+   Runs only while the hero is on screen. One instance per hero canvas. */
+function HeroNet(canvasId, opts) {
+  opts = opts || {};
   var cv, ctx, W = 0, H = 0, dpr = 1, layers = [], pulses = [], words = [];
   var raf = 0, running = false, visible = true, mx = 0, my = 0, px = 0, py = 0, last = 0, clock = 0;
 
   var TINTS  = ['#ffffff', '#cfe0ff', '#a7f3e4', '#d6d0ff', '#b9e6ff'];
-  var LEXICON = ['DWDM', 'TRANSMISSION', 'NETWORK', 'ROADM', 'C-BAND', 'OSNR', 'λ 1550 nm',
+  var LEXICON = opts.lexicon || ['DWDM', 'TRANSMISSION', 'NETWORK', 'ROADM', 'C-BAND', 'OSNR', 'λ 1550 nm',
                  '193.1 THz', 'MUX / DEMUX', 'OTN', '400G', 'OPTICAL LAYER', 'WDM', 'FIBER', 'OLA', '1+1 PROTECTION'];
 
   /* seeded random: the mesh keeps its shape across resizes */
@@ -230,7 +231,7 @@ var heroNet = (function() {
   function stop() { running = false; cancelAnimationFrame(raf); }
 
   function init() {
-    cv = document.getElementById('hero-net');
+    cv = document.getElementById(canvasId);
     if (!cv) return;
     ctx = cv.getContext('2d');
     var hero = cv.parentNode;
@@ -252,39 +253,51 @@ var heroNet = (function() {
   }
 
   return { init: init, resize: resize, start: start, stop: stop };
-})();
+}
 
-/* ── SCROLL REVEAL ── */
-var homeRevealObs = null;
-function homeReveal() {
-  var els = document.querySelectorAll('#pg-home [data-reveal]');
+var heroNet = HeroNet('hero-net');
+
+/* client heroes: same mesh, with words about each client */
+var clientNets = {
+  'pg-amazon-leo': HeroNet('cl-net-amazon-leo', { lexicon: ['AMAZON LEO', 'GATEWAY', 'SLZ501 \u00b7 OCARA', 'CPV501 \u00b7 SANHAR\u00d3',
+    'RFO', 'CASE TIMELINE', 'LEO', 'DWDM', 'UPTIME', 'CIRCUIT', '100G', 'EQUINIX RJ2'] }),
+  'pg-starlink':   HeroNet('cl-net-starlink', { lexicon: ['STARLINK', 'GATEWAY', 'LEO', 'BACKHAUL', 'DWDM', 'TRANSMISSION',
+    'LOW LATENCY', 'NETWORK', '400G', 'OPTICAL LAYER'] })
+};
+
+/* ── SCROLL REVEAL (any page with [data-reveal] blocks) ── */
+function fxReveal(page) {
+  if (!page) return;
+  var els = page.querySelectorAll('[data-reveal]');
   els.forEach(function(el) { el.classList.remove('in'); });
   if (HOME_REDUCED || !('IntersectionObserver' in window)) {
     els.forEach(function(el) { el.classList.add('in'); });
     return;
   }
-  if (homeRevealObs) homeRevealObs.disconnect();
-  homeRevealObs = new IntersectionObserver(function(es) {
+  if (page._revealObs) page._revealObs.disconnect();
+  var obs = page._revealObs = new IntersectionObserver(function(es) {
     es.forEach(function(e) {
       if (!e.isIntersecting) return;
       e.target.classList.add('in');
-      homeRevealObs.unobserve(e.target);
+      obs.unobserve(e.target);
     });
   }, { threshold: .12, rootMargin: '0px 0px -40px 0px' });
-  requestAnimationFrame(function() { els.forEach(function(el) { homeRevealObs.observe(el); }); });
+  requestAnimationFrame(function() { els.forEach(function(el) { obs.observe(el); }); });
 }
+function homeReveal() { fxReveal(document.getElementById('pg-home')); }
 
 /* ── CARD MOTION: cursor spotlight on tools, gentle 3D tilt on clients ──
    delegated from the grids, so it keeps working if the cards are re-rendered */
 function homeBindCards() {
   if (HOME_REDUCED) return;
-  var tools = document.querySelector('#pg-home .home-tools');
-  if (tools) tools.addEventListener('mousemove', function(e) {
-    var c = e.target.closest('.act-card');
-    if (!c) return;
-    var r = c.getBoundingClientRect();
-    c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-    c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  document.querySelectorAll('.home-tools').forEach(function(tools) {
+    tools.addEventListener('mousemove', function(e) {
+      var c = e.target.closest('.act-card');
+      if (!c) return;
+      var r = c.getBoundingClientRect();
+      c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
   });
   var clients = document.querySelector('#pg-home .clients-grid');
   if (!clients) return;
@@ -312,6 +325,7 @@ function homeBindTopbar() {
 
 function homeInit() {
   heroNet.init();
+  Object.keys(clientNets).forEach(function(k) { clientNets[k].init(); });
   homeBindCards();
   homeBindTopbar();
   homeReveal();
@@ -322,4 +336,14 @@ function homeEnter() {
   heroNet.resize();
   heroNet.start();
   homeReveal();
+}
+
+/* called whenever a client page is shown (see navigation.js) */
+function clientEnter(id) {
+  var page = document.getElementById(id);
+  if (!page) return;
+  var hero = page.querySelector('.cl-hero');
+  if (hero) { hero.classList.remove('hero-in'); void hero.offsetWidth; hero.classList.add('hero-in'); }
+  if (clientNets[id]) { clientNets[id].resize(); clientNets[id].start(); }
+  fxReveal(page);
 }

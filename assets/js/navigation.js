@@ -15,7 +15,7 @@ function showPage(id) {
     animateClientCards();
   }
   if (id === 'pg-amazon-leo' || id === 'pg-starlink') {
-    animateActCards(id);
+    clientEnter(id);
   }
 }
 

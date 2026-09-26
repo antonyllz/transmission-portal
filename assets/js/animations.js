@@ -56,22 +56,6 @@ function animateHero() {
   if (typeof homeEnter === 'function') homeEnter();
 }
 
-/* ── Act cards stagger (client pages) ── */
-function animateActCards(pageId) {
-  var page = pageId ? document.getElementById(pageId) : document.querySelector('.page.active');
-  if (!page) return;
-  var cards = page.querySelectorAll('.act-card:not(.cs)');
-  cards.forEach(function(c) { c.classList.remove('vanishIn'); });
-  var grid = page.querySelector('.act-grid');
-  if (grid) void grid.offsetWidth;
-  cards.forEach(function(c, i) {
-    c.style.animationDuration = '0.45s';
-    c.style.animationFillMode = 'both';
-    c.style.animationDelay   = (i * 0.1) + 's';
-    c.classList.add('vanishIn');
-  });
-}
-
 /* ── Logo + label entrance on first load ── */
 function animateLogo() {
   var logo = document.getElementById('tb-logo');
