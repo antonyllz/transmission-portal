@@ -46,22 +46,14 @@ function bindRipples() {
   });
 }
 
-/* ── Hero text stagger ── */
+/* ── Hero entrance: eyebrow, masked title words, subtitle, stats ── */
 function animateHero() {
   var hero = document.querySelector('.home-hero');
   if (!hero) return;
-  var items = [
-    { el: hero.querySelector('.ey'), delay: '0s' },
-    { el: hero.querySelector('h1'),  delay: '0.13s' },
-    { el: hero.querySelector('p'),   delay: '0.24s' }
-  ];
-  items.forEach(function(o) { if (o.el) o.el.classList.remove('hero-text-anim'); });
+  hero.classList.remove('hero-in');
   void hero.offsetWidth;
-  items.forEach(function(o) {
-    if (!o.el) return;
-    o.el.style.animationDelay = o.delay;
-    o.el.classList.add('hero-text-anim');
-  });
+  hero.classList.add('hero-in');
+  if (typeof homeEnter === 'function') homeEnter();
 }
 
 /* ── Act cards stagger (client pages) ── */

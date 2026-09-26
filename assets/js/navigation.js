@@ -28,6 +28,7 @@ function animateClientCards() {
   cards.forEach(function(card, i) {
     card.style.animationDelay = (i * 0.13) + 's';
     card.classList.add('vanishIn');
+    card.addEventListener('animationend', function() { card.classList.remove('vanishIn'); }, { once: true });
   });
 }
 

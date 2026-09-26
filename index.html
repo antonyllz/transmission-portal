@@ -88,17 +88,26 @@
 ══════════════════════════════════════════ -->
 <div id="pg-home" class="page active">
   <div class="home-hero">
-    <div class="ey">Network Engineering</div>
-    <h1>Transmission Portal</h1>
-    <p>Internal tools and reports for the Transmission team</p>
+    <canvas class="hero-net" id="hero-net" aria-hidden="true"></canvas>
+    <div class="hero-inner">
+      <div class="ey"><span class="live-dot"></span>Network Engineering &middot; Transmission</div>
+      <h1><span class="hl"><span>Transmission</span></span> <span class="hl"><span>Portal</span></span></h1>
+      <p>Internal tools and reports for the Transmission team</p>
+      <div class="hero-stats">
+        <a class="hs" href="#/lambdas"><b id="hs-ch">0</b><span>canais ativos</span></a>
+        <a class="hs" href="#/lambdas"><b id="hs-sites">0</b><span>sites DWDM</span></a>
+        <a class="hs" href="#/rmas"><b id="hs-rma">0</b><span>RMAs abertos</span></a>
+        <div class="hs"><b id="hs-dmd">0</b><span>demandas</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="wrap">
 
     <!-- DEMANDS -->
     <div style="margin-bottom:40px;">
-      <div class="sec-lbl">Demandas</div>
-      <div class="notes-grid" id="notes-grid">
+      <div class="sec-lbl" data-reveal><span class="sec-num">01</span>Demandas</div>
+      <div class="notes-grid" id="notes-grid" data-reveal style="--d:.08s">
         <div class="note-card note-add" id="note-add-card" onclick="expandAddNote()">
           <div class="nadd-default" style="display:flex;flex-direction:column;align-items:center;gap:10px;">
             <div class="nadd-icon">
@@ -127,7 +136,7 @@
     </div>
 
     <!-- CLIENTS -->
-    <div class="sec-lbl">Clients</div>
+    <div class="sec-lbl" data-reveal><span class="sec-num">02</span>Clients</div>
     <div class="clients-grid">
       <a class="client-card" href="#/amazon-leo">
         <div class="card-thumb"><img src="assets/images/amazon-leo-card.jpg" alt="Amazon Leo"/></div>
@@ -149,9 +158,9 @@
 
     <!-- TOOLS -->
     <div style="margin-top:40px;">
-      <div class="sec-lbl">Tools</div>
-      <div class="act-grid" style="max-width:none;">
-        <a class="act-card" href="#/rmas">
+      <div class="sec-lbl" data-reveal><span class="sec-num">03</span>Tools</div>
+      <div class="act-grid home-tools" style="max-width:none;">
+        <a class="act-card" data-reveal style="--d:0.00s" href="#/rmas">
           <span class="rma-tool-count" id="rma-tool-count"></span>
           <div class="act-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -163,7 +172,7 @@
           <div class="act-desc">Track equipment returns (RMA) sent for repair or replacement</div>
           <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         </a>
-        <a class="act-card" href="#/lambdas">
+        <a class="act-card" data-reveal style="--d:0.06s" href="#/lambdas">
           <span class="lmb-tool-count" id="lmb-tool-count"></span>
           <div class="act-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -175,7 +184,7 @@
           <div class="act-desc">DWDM network map &mdash; channels in use per span, client and grid</div>
           <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         </a>
-        <a class="act-card" href="#/loa">
+        <a class="act-card" data-reveal style="--d:0.12s" href="#/loa">
           <div class="act-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -186,7 +195,7 @@
           <div class="act-desc">Create a Letter of Authorization and export as PDF</div>
           <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
         </a>
-        <a class="act-card" href="#/rfo">
+        <a class="act-card" data-reveal style="--d:0.18s" href="#/rfo">
           <div class="act-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -601,6 +610,7 @@
 <script src="assets/js/network-routes.js"></script>
 <script src="assets/js/osa.js"></script>
 <script src="assets/js/lambdas.js"></script>
+<script src="assets/js/home.js"></script>
 <script src="assets/js/notifications.js"></script>
 <script src="assets/js/app.js"></script>
 
