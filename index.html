@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Network Engineering — Transmission</title>
-  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg"/>
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg?v=2"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/base.css"/>
   <link rel="stylesheet" href="assets/css/home.css"/>
@@ -179,7 +179,13 @@
       <!-- DEMANDS -->
       <div class="home-block">
         <div class="sec-lbl" data-reveal><span class="sec-num">02</span>Demandas</div>
-        <div class="notes-grid" id="notes-grid" data-reveal style="--d:.08s">
+        <div class="dmd-panel" data-reveal style="--d:.08s">
+          <div class="dmd-head">
+            <div><div class="dmd-title">Em andamento</div><div class="dmd-sum" id="dmd-sum"></div></div>
+            <button class="dmd-new" onclick="event.stopPropagation(); expandAddNote()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova</button>
+          </div>
+          <div class="dmd-filters" id="dmd-filters"></div>
+          <div class="notes-grid" id="notes-grid">
           <div class="note-card note-add" id="note-add-card" onclick="expandAddNote()">
             <div class="nadd-default" style="display:flex;flex-direction:column;align-items:center;gap:10px;">
               <div class="nadd-icon">
@@ -204,6 +210,8 @@
             </div>
           </div>
           <!-- demand note cards rendered by JS -->
+        </div>
+          <div class="dmd-empty" id="dmd-empty"></div>
         </div>
       </div>
     </aside>

@@ -14,7 +14,7 @@ var nadd_prio = 'urgente';
 /* ── ADD NOTE CARD ── */
 function expandAddNote() {
   var card = document.getElementById('note-add-card');
-  if (card.classList.contains('expanded')) return;
+  if (card.classList.contains('expanded')) { cancelAddNote(null); return; }
   card.classList.add('expanded');
   card.onclick = null;
   requestAnimationFrame(function() {
@@ -89,6 +89,33 @@ function saveNoteAdd(e) {
 
 /* ── NOTE BOARD RENDER ── */
 var dmdExpanded = {};   /* id -> true: stays open across re-renders (polling) */
+var dmdFilter   = 'all';
+
+var DMD_FILTERS = {
+  all:    { label: 'Todas',     test: function() { return true; } },
+  urgent: { label: 'Urgentes',  test: function(d) { return d.priority === 'urgente'; } },
+  due:    { label: 'Vencendo',  test: function(d) { var c = dmdState(d).cls; return c === 'soon' || c === 'late'; } },
+  free:   { label: 'Sem prazo', test: function(d) { return d.duration == null; } }
+};
+
+function dmdSetFilter(k) { dmdFilter = k; renderNoteBoard(); }
+
+/* panel header: one-line summary + filter chips with counts */
+function renderDmdHeader(all) {
+  var sum = document.getElementById('dmd-sum'), fl = document.getElementById('dmd-filters');
+  if (!sum || !fl) return;
+  var late = all.filter(function(d) { return dmdState(d).cls === 'late'; }).length;
+  var soon = all.filter(function(d) { return dmdState(d).cls === 'soon'; }).length;
+  var parts = [all.length + (all.length === 1 ? ' aberta' : ' abertas')];
+  if (soon) parts.push('<span class="s-soon">' + soon + ' vencendo</span>');
+  if (late) parts.push('<span class="s-late">' + late + (late === 1 ? ' expirada' : ' expiradas') + '</span>');
+  sum.innerHTML = parts.join(' \u00b7 ');
+  fl.innerHTML = Object.keys(DMD_FILTERS).map(function(k) {
+    var n = all.filter(DMD_FILTERS[k].test).length;
+    return '<button class="' + (dmdFilter === k ? 'sel' : '') + '" onclick="event.stopPropagation(); dmdSetFilter(\'' + k + '\')">'
+      + DMD_FILTERS[k].label + '<b>' + n + '</b></button>';
+  }).join('');
+}
 
 var DMD_ICON = {
   clock:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
@@ -127,7 +154,17 @@ function renderNoteBoard() {
 
   grid.querySelectorAll('.note-demand').forEach(function(n) { n.remove(); });
 
-  dmdGetAll().forEach(function(d, i) {
+  var all = dmdGetAll(), shown = all.filter(DMD_FILTERS[dmdFilter].test);
+  renderDmdHeader(all);
+  var empty = document.getElementById('dmd-empty');
+  if (empty) {
+    empty.style.display = shown.length ? 'none' : '';
+    empty.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>'
+      + '<b>' + (all.length ? 'Nada neste filtro' : 'Tudo em dia') + '</b>'
+      + '<span>' + (all.length ? 'Nenhuma demanda ' + DMD_FILTERS[dmdFilter].label.toLowerCase() + ' agora.' : 'Nenhuma demanda aberta. Use \u201c+ Nova\u201d para registrar.') + '</span>';
+  }
+
+  shown.forEach(function(d, i) {
     var st = dmdState(d), nc = (d.comments || []).length;
     var card = document.createElement('div');
     card.className = 'note-card note-demand note-pop ' + st.cls + (dmdExpanded[d.id] ? ' expanded' : '');
@@ -250,7 +287,9 @@ function finishDemand(id) { dmdRemove(id, true); }
 
 /* ── TICK DEMAND TIMERS ── */
 function tickNoteTimers() {
-  dmdGetAll().forEach(function(d) {
+  var all = dmdGetAll();
+  if (all.some(function(d) { var c = dmdState(d).cls; return c === 'soon' || c === 'late'; })) renderDmdHeader(all);
+  all.forEach(function(d) {
     if (d.duration == null) return;
     var el = document.getElementById('ntimer-' + d.id);
     if (!el) return;
