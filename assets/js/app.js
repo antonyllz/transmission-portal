@@ -9,13 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (logo) logo.addEventListener('click', function() { showPage('pg-home'); });
 
   /* ── Initial renders ── */
-  initClientSkeletons();
   dbSync().then(function() {
     updateBadge();
     updateRmaToolCount();
     updateLmbToolCount();
     renderNoteBoardWithSkeleton();
-    homeCountUp(true);
     if (routeCurrentPath()) routeFromHash();
     dbStartPolling(8000);
   });
@@ -58,7 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ── Refresh visible UI when polling picks up changes from other users ── */
 function onDbExternalUpdate() {
   updateBadge();
-  homeCountUp(false);
   var home = document.getElementById('pg-home');
   if (home && home.classList.contains('active')) renderNoteBoard();
   var tlList = document.getElementById('pg-tl-list');

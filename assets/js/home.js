@@ -1,78 +1,211 @@
 /* ═══════════════════════════════
-   HOME — hero network, live stats, scroll reveal, card motion
+   HOME — hero network, scroll reveal, card motion
    ═══════════════════════════════ */
 
 var HOME_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ── HERO NETWORK ──
-   The real DWDM topology (network-data.js + road geometry) drawn as faint fibers
-   on the hero, with light pulses travelling along them. Runs only while visible. */
+   A generated optical mesh in two depth layers: gently curved fibers, light
+   pulses that hop node to node along whole routes (tails follow the curves),
+   nodes that flare as a pulse passes, and technical words typed into the scene.
+   Runs only while the hero is on screen. */
 var heroNet = (function() {
-  var cv, ctx, W = 0, H = 0, dpr = 1, paths = [], nodes = [], pulses = [];
-  var raf = 0, running = false, visible = true, mx = 0, my = 0, px = 0, py = 0, last = 0;
+  var cv, ctx, W = 0, H = 0, dpr = 1, layers = [], pulses = [], words = [];
+  var raf = 0, running = false, visible = true, mx = 0, my = 0, px = 0, py = 0, last = 0, clock = 0;
 
-  /* The Nordeste and Sudeste networks are ~1500 km apart, so instead of one sparse map
-     they're drawn as two insets side by side (each to scale), like a network diagram. */
-  var REGIONS = [
-    { name: 'Nordeste', test: function(s) { return s.lat > -14; }, h: .84 },
-    { name: 'Sudeste',  test: function(s) { return s.lat <= -14; }, h: .60 }
-  ];
-  var labels = [];
+  var TINTS  = ['#ffffff', '#cfe0ff', '#a7f3e4', '#d6d0ff', '#b9e6ff'];
+  var LEXICON = ['DWDM', 'TRANSMISSION', 'NETWORK', 'ROADM', 'C-BAND', 'OSNR', 'λ 1550 nm',
+                 '193.1 THz', 'MUX / DEMUX', 'OTN', '400G', 'OPTICAL LAYER', 'WDM', 'FIBER', 'OLA', '1+1 PROTECTION'];
 
-  function project() {
-    if (typeof NET_SITES === 'undefined') return;
-    var wide = W > 760, right = wide ? W - Math.max(40, (W - 960) / 2) : W - 20, gap = wide ? 56 : 24;
-    var proj = {};
-    labels = [];
-    REGIONS.forEach(function(rg) {
-      var ss = NET_SITES.filter(rg.test);
-      var la0 = Math.min.apply(null, ss.map(function(s) { return s.lat; })), la1 = Math.max.apply(null, ss.map(function(s) { return s.lat; }));
-      var ln0 = Math.min.apply(null, ss.map(function(s) { return s.lng; })), ln1 = Math.max.apply(null, ss.map(function(s) { return s.lng; }));
-      var k = Math.cos((la0 + la1) / 2 * Math.PI / 180);   /* keep the geography's proportions */
-      var bh = H * rg.h * (wide ? 1 : .7), bw = bh * (ln1 - ln0) * k / (la1 - la0);
-      rg.box = { w: bw, h: bh };
-      rg.P = function(lat, lng) { return [rg.box.x + (lng - ln0) / (ln1 - ln0) * bw, rg.box.y + (la1 - lat) / (la1 - la0) * bh]; };
-      ss.forEach(function(s) { proj[s.id] = rg; });
-    });
-    /* right to left: Nordeste at the edge, Sudeste beside it */
-    var x = right;
-    REGIONS.forEach(function(rg) {
-      x -= rg.box.w;
-      rg.box.x = x; rg.box.y = (H - rg.box.h) / 2 - 8;
-      if (wide) labels.push({ text: rg.name.toUpperCase(), x: x + rg.box.w / 2, y: rg.box.y + rg.box.h + 22 });
-      x -= gap;
-    });
+  /* seeded random: the mesh keeps its shape across resizes */
+  function rng(seed) {
+    return function() {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
 
-    var R = typeof NET_ROUTES !== 'undefined' ? NET_ROUTES : {};
-    paths = NET_LINKS.map(function(l) {
-      var a = NET_SITES.find(function(s) { return s.id === l.a; }), b = NET_SITES.find(function(s) { return s.id === l.b; });
-      if (a.id > b.id) { var t = a; a = b; b = t; }
-      var P = proj[a.id].P;
-      var road = R['link:' + l.id] || R[a.id + '|' + b.id];
-      var ll = road ? [[a.lat, a.lng]].concat(road.pts, [[b.lat, b.lng]]) : [[a.lat, a.lng], [b.lat, b.lng]];
-      var pts = ll.map(function(p) { return P(p[0], p[1]); });
-      var d = [0];
-      for (var i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-      return { pts: pts, d: d, len: d[d.length - 1] || 1 };
-    });
-    nodes = NET_SITES.map(function(s) {
-      var p = proj[s.id].P(s.lat, s.lng);
-      return { x: p[0], y: p[1], big: s.role !== 'ola', ph: Math.random() * Math.PI * 2 };
+  function curve(a, b, bend) {
+    var mx2 = (a.x + b.x) / 2 - (b.y - a.y) * bend, my2 = (a.y + b.y) / 2 + (b.x - a.x) * bend, pts = [];
+    for (var i = 0; i <= 18; i++) {
+      var t = i / 18, u = 1 - t;
+      pts.push([u * u * a.x + 2 * u * t * mx2 + t * t * b.x, u * u * a.y + 2 * u * t * my2 + t * t * b.y]);
+    }
+    var d = [0];
+    for (var j = 1; j < pts.length; j++) d.push(d[j - 1] + Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]));
+    return { pts: pts, d: d, len: d[d.length - 1] || 1 };
+  }
+
+  function build() {
+    var wide = W > 760, rand = rng(1550);
+    var x0 = wide ? W * 0.44 : 0, x1 = W + 20, y0 = -10, y1 = H + 10;
+    layers = [
+      { depth: .45, alpha: .55, count: wide ? 26 : 14, nodes: [], edges: [] },
+      { depth: 1,   alpha: 1,   count: wide ? 30 : 16, nodes: [], edges: [] }
+    ];
+    layers.forEach(function(L) {
+      var aw = x1 - x0, ah = y1 - y0, cols = Math.ceil(Math.sqrt(L.count * aw / ah)), rows = Math.ceil(L.count / cols);
+      for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+        L.nodes.push({
+          x: x0 + (c + .15 + rand() * .7) * aw / cols, y: y0 + (r + .15 + rand() * .7) * ah / rows,
+          adj: [], glow: 0, core: rand() < .3, ph: rand() * 6.28
+        });
+      }
+      /* fibers: each node to its 2 nearest neighbours, plus a few longer links */
+      var seen = {};
+      L.nodes.forEach(function(n, i) {
+        var near = L.nodes.map(function(m, j) { return { j: j, d: Math.hypot(m.x - n.x, m.y - n.y) }; })
+          .filter(function(o) { return o.j !== i; }).sort(function(a, b) { return a.d - b.d; });
+        var pick = near.slice(0, 2).concat(rand() < .25 ? [near[2 + Math.floor(rand() * 3)]] : []);
+        pick.forEach(function(o) {
+          if (!o) return;
+          var k = Math.min(i, o.j) + '-' + Math.max(i, o.j);
+          if (seen[k]) return;
+          seen[k] = true;
+          var e = { a: i, b: o.j, c: curve(n, L.nodes[o.j], (rand() - .5) * .35) };
+          L.edges.push(e);
+          n.adj.push(e); L.nodes[o.j].adj.push(e);
+        });
+      });
     });
   }
 
-  function at(path, dist) {
-    var d = path.d, i = 1;
-    while (i < d.length - 1 && d[i] < dist) i++;
-    var k = (dist - d[i - 1]) / ((d[i] - d[i - 1]) || 1), a = path.pts[i - 1], b = path.pts[i];
+  function at(c, s) {
+    var d = c.d, i = 1;
+    while (i < d.length - 1 && d[i] < s) i++;
+    var k = (s - d[i - 1]) / ((d[i] - d[i - 1]) || 1), a = c.pts[i - 1], b = c.pts[i];
     return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
   }
 
+  /* a pulse rides fiber after fiber, never turning straight back */
   function spawn() {
-    var p = paths[Math.floor(Math.random() * paths.length)];
-    if (!p) return;
+    var L = layers[Math.random() < .35 ? 0 : 1], e = L.edges[Math.floor(Math.random() * L.edges.length)];
+    if (!e) return;
     var fwd = Math.random() < .5;
-    pulses.push({ p: p, s: fwd ? 0 : p.len, v: (fwd ? 1 : -1) * (26 + Math.random() * 34), tail: 16 + Math.random() * 14 });
+    pulses.push({
+      L: L, e: e, from: fwd ? e.a : e.b, s: 0, v: 70 + Math.random() * 50,
+      tint: TINTS[Math.floor(Math.random() * TINTS.length)], trail: [], hops: 0,
+      maxHops: 3 + Math.floor(Math.random() * 5), fade: 1, dying: false
+    });
+  }
+
+  function step(q, dt) {
+    if (!q.dying) q.s += q.v * dt;
+    while (q.s >= q.e.c.len && !q.dying) {
+      var to = q.e.a === q.from ? q.e.b : q.e.a, node = q.L.nodes[to];
+      node.glow = 1;
+      q.hops++;
+      var next = node.adj.filter(function(x) { return x !== q.e; });
+      if (!next.length || q.hops >= q.maxHops) { q.dying = true; q.s = q.e.c.len; break; }
+      q.s -= q.e.c.len;
+      q.e = next[Math.floor(Math.random() * next.length)];
+      q.from = to;
+    }
+    var s = q.e.a === q.from ? q.s : q.e.c.len - q.s;
+    var p = at(q.e.c, Math.max(0, Math.min(q.e.c.len, s)));
+    q.trail.push(p);
+    if (q.trail.length > 26 || (q.dying && q.trail.length > 1)) q.trail.shift();
+    if (q.dying) q.fade -= dt * 2.2;
+  }
+
+  /* ── typed words: little annotations that type themselves near a node ── */
+  function spawnWord() {
+    var L = layers[1], n = L.nodes[Math.floor(Math.random() * L.nodes.length)];
+    if (!n || n.x < (W > 760 ? W * .5 : 0) || n.x > W - 150 || n.y < 34 || n.y > H - 18) return;
+    var text = LEXICON[Math.floor(Math.random() * LEXICON.length)];
+    if (words.some(function(w) { return w.text === text || Math.hypot(w.n.x - n.x, w.n.y - n.y) < 150; })) return;
+    words.push({ n: n, text: text, shown: 0, phase: 'type', hold: 0, dx: 14 + Math.random() * 18, dy: -10 - Math.random() * 14 });
+  }
+
+  function drawWords(dt) {
+    ctx.font = '600 10px Inter, system-ui, sans-serif';
+    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '2px';
+    words.forEach(function(w) {
+      if (w.phase === 'type') { w.shown += dt * 16; if (w.shown >= w.text.length) { w.shown = w.text.length; w.phase = 'hold'; } }
+      else if (w.phase === 'hold') { w.hold += dt; if (w.hold > 2.4 && !HOME_REDUCED) w.phase = 'erase'; }
+      else { w.shown -= dt * 30; if (w.shown <= 0) w.phase = 'done'; }
+      var x = w.n.x, y = w.n.y, tx = x + w.dx, ty = y + w.dy;
+      var str = w.text.slice(0, Math.max(0, Math.floor(w.shown)));
+      var vis = Math.min(1, w.shown / 2);
+      /* leader line from the node to the label */
+      ctx.strokeStyle = 'rgba(255,255,255,' + (.28 * vis) + ')'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx - 4, ty + 3); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillText(str, tx, ty);
+      /* block caret while typing, blinking while holding */
+      var cw = ctx.measureText(str).width;
+      if (w.phase === 'type' || (w.phase === 'hold' && Math.floor(clock * 2.4) % 2 === 0)) {
+        ctx.fillStyle = 'rgba(167,243,228,.85)';
+        ctx.fillRect(tx + cw + 2, ty - 8, 5, 9);
+      }
+    });
+    words = words.filter(function(w) { return w.phase !== 'done'; });
+    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+  }
+
+  function draw(dt) {
+    clock += dt;
+    ctx.clearRect(0, 0, W, H);
+    px += (mx - px) * Math.min(1, dt * 4); py += (my - py) * Math.min(1, dt * 4);   /* eased parallax */
+    var wide = W > 760;
+    var fade = function(x) { return wide ? Math.min(1, Math.max(0, (x - W * .36) / (W * .22))) : .6; };   /* clear the text side */
+
+    layers.forEach(function(L) {
+      ctx.save(); ctx.translate(px * 22 * L.depth, py * 14 * L.depth);
+      ctx.lineWidth = L.depth < 1 ? .8 : 1; ctx.lineCap = 'round';
+      L.edges.forEach(function(e) {
+        ctx.strokeStyle = 'rgba(255,255,255,' + (.16 * L.alpha * fade(e.c.pts[9][0])) + ')';
+        ctx.beginPath(); ctx.moveTo(e.c.pts[0][0], e.c.pts[0][1]);
+        for (var i = 1; i < e.c.pts.length; i++) ctx.lineTo(e.c.pts[i][0], e.c.pts[i][1]);
+        ctx.stroke();
+      });
+      L.nodes.forEach(function(n) {
+        n.glow = Math.max(0, n.glow - dt * 1.6);
+        var base = (n.core ? .55 : .32) + .12 * Math.sin(clock * 1.3 + n.ph);
+        if (n.glow > .02) {
+          var r = 12 * n.glow + 4, g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r);
+          g.addColorStop(0, 'rgba(210,228,255,' + (.55 * n.glow * L.alpha) + ')'); g.addColorStop(1, 'rgba(210,228,255,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 6.29); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, (base + n.glow * .5) * L.alpha * fade(n.x)) + ')';
+        ctx.beginPath(); ctx.arc(n.x, n.y, (n.core ? 2 : 1.3) * (L.depth < 1 ? .8 : 1), 0, 6.29); ctx.fill();
+      });
+      /* pulses: the tail follows the actual path and fades towards the back */
+      pulses.forEach(function(q) {
+        if (q.L !== L) return;
+        step(q, dt);
+        var t = q.trail, a = Math.max(0, q.fade) * L.alpha;
+        for (var i = 1; i < t.length; i++) {
+          var k = i / (t.length - 1);
+          ctx.strokeStyle = q.tint; ctx.globalAlpha = a * k * k;
+          ctx.lineWidth = (L.depth < 1 ? 1.2 : 2) * (.4 + .6 * k);
+          ctx.beginPath(); ctx.moveTo(t[i - 1][0], t[i - 1][1]); ctx.lineTo(t[i][0], t[i][1]); ctx.stroke();
+        }
+        var h = t[t.length - 1];
+        if (h) {
+          ctx.globalAlpha = a;
+          var hg = ctx.createRadialGradient(h[0], h[1], 0, h[0], h[1], 6);
+          hg.addColorStop(0, q.tint); hg.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(h[0], h[1], 6, 0, 6.29); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      });
+      if (L.depth === 1 && wide) drawWords(dt);
+      ctx.restore();
+    });
+    pulses = pulses.filter(function(q) { return q.fade > 0; });
+  }
+
+  function loop(now) {
+    if (!running) return;
+    var dt = last ? Math.min(.05, (now - last) / 1000) : 0;
+    last = now;
+    if (pulses.length < 22 && Math.random() < dt * 9) spawn();
+    if (words.length < 3 && Math.random() < dt * .9) spawnWord();
+    draw(dt);
+    raf = requestAnimationFrame(loop);
   }
 
   function resize() {
@@ -83,63 +216,10 @@ var heroNet = (function() {
     W = r.width; H = r.height;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    project();
+    pulses = []; words = [];
+    build();
+    if (HOME_REDUCED) { for (var i = 0; i < 12 && words.length < 3; i++) spawnWord(); words.forEach(function(w) { w.shown = w.text.length; w.phase = 'hold'; }); }
     draw(0);
-  }
-
-  function draw(dt) {
-    ctx.clearRect(0, 0, W, H);
-    px += (mx - px) * .06; py += (my - py) * .06;   /* eased parallax */
-    ctx.save();
-    ctx.translate(px * 10, py * 8);
-
-    ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(255,255,255,.18)';
-    paths.forEach(function(p) {
-      ctx.beginPath(); ctx.moveTo(p.pts[0][0], p.pts[0][1]);
-      for (var i = 1; i < p.pts.length; i++) ctx.lineTo(p.pts[i][0], p.pts[i][1]);
-      ctx.stroke();
-    });
-
-    /* light pulses with a fading tail */
-    pulses.forEach(function(q) {
-      q.s += q.v * dt;
-      var head = at(q.p, Math.max(0, Math.min(q.p.len, q.s)));
-      var tailS = q.s - Math.sign(q.v) * q.tail, tail = at(q.p, Math.max(0, Math.min(q.p.len, tailS)));
-      var g = ctx.createLinearGradient(tail[0], tail[1], head[0], head[1]);
-      g.addColorStop(0, 'rgba(158,192,255,0)'); g.addColorStop(1, 'rgba(225,236,255,.95)');
-      ctx.strokeStyle = g; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(head[0], head[1]); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(head[0], head[1], 1.6, 0, Math.PI * 2); ctx.fill();
-    });
-    pulses = pulses.filter(function(q) { return q.v > 0 ? q.s - q.tail < q.p.len : q.s + q.tail > 0; });
-
-    /* sites: terminals/ROADMs slightly bigger, all breathing gently */
-    var t = performance.now() / 1000;
-    nodes.forEach(function(n) {
-      var a = .35 + .25 * Math.sin(t * 1.4 + n.ph);
-      ctx.fillStyle = 'rgba(255,255,255,' + (n.big ? a + .2 : a * .7) + ')';
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.big ? 2.1 : 1.3, 0, Math.PI * 2); ctx.fill();
-    });
-    /* region captions */
-    ctx.font = '600 9.5px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,.38)';
-    labels.forEach(function(l) {
-      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '2px';
-      ctx.fillText(l.text, l.x, l.y);
-    });
-    ctx.textAlign = 'left';
-    ctx.restore();
-  }
-
-  function loop(now) {
-    if (!running) return;
-    var dt = last ? Math.min(.05, (now - last) / 1000) : 0;
-    last = now;
-    if (pulses.length < 26 && Math.random() < .35) spawn();
-    draw(dt);
-    raf = requestAnimationFrame(loop);
   }
 
   function start() {
@@ -174,33 +254,6 @@ var heroNet = (function() {
   return { init: init, resize: resize, start: start, stop: stop };
 })();
 
-/* ── LIVE STATS (count up to the real numbers) ── */
-function homeStatValues() {
-  var lm = typeof lmbGetAll === 'function' ? lmbGetAll().filter(function(c) { return c.status !== 'inativo'; }).length : 0;
-  return {
-    'hs-ch':    lm,
-    'hs-sites': typeof NET_SITES !== 'undefined' ? NET_SITES.length : 0,
-    'hs-rma':   typeof rmaGetAll === 'function' ? rmaGetAll().filter(function(r) { return r.status !== 'finalizado'; }).length : 0,
-    'hs-dmd':   typeof dmdGetAll === 'function' ? dmdGetAll().length : 0
-  };
-}
-
-function homeCountUp(animate) {
-  var vals = homeStatValues();
-  Object.keys(vals).forEach(function(id, i) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    var to = vals[id], from = animate ? 0 : (parseInt(el.textContent, 10) || 0);
-    if (HOME_REDUCED || from === to) { el.textContent = to; return; }
-    var t0 = performance.now() + (animate ? 350 + i * 90 : 0), dur = 1100;
-    (function tick(now) {
-      var k = Math.max(0, Math.min(1, (now - t0) / dur));
-      el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 4)));
-      if (k < 1) requestAnimationFrame(tick);
-    })(performance.now());
-  });
-}
-
 /* ── SCROLL REVEAL ── */
 var homeRevealObs = null;
 function homeReveal() {
@@ -221,23 +274,30 @@ function homeReveal() {
   requestAnimationFrame(function() { els.forEach(function(el) { homeRevealObs.observe(el); }); });
 }
 
-/* ── CARD MOTION: cursor spotlight on tools, gentle 3D tilt on clients ── */
+/* ── CARD MOTION: cursor spotlight on tools, gentle 3D tilt on clients ──
+   delegated from the grids, so it keeps working if the cards are re-rendered */
 function homeBindCards() {
   if (HOME_REDUCED) return;
-  document.querySelectorAll('#pg-home .act-card').forEach(function(c) {
-    c.addEventListener('mousemove', function(e) {
-      var r = c.getBoundingClientRect();
-      c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-      c.style.setProperty('--my', (e.clientY - r.top) + 'px');
-    });
+  var tools = document.querySelector('#pg-home .home-tools');
+  if (tools) tools.addEventListener('mousemove', function(e) {
+    var c = e.target.closest('.act-card');
+    if (!c) return;
+    var r = c.getBoundingClientRect();
+    c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    c.style.setProperty('--my', (e.clientY - r.top) + 'px');
   });
-  document.querySelectorAll('#pg-home .client-card:not(.ph)').forEach(function(c) {
-    c.addEventListener('mousemove', function(e) {
-      var r = c.getBoundingClientRect();
-      var x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-      c.style.transform = 'perspective(900px) rotateX(' + (-y * 5).toFixed(2) + 'deg) rotateY(' + (x * 6).toFixed(2) + 'deg) translateY(-3px)';
-    });
-    c.addEventListener('mouseleave', function() { c.style.transform = ''; });
+  var clients = document.querySelector('#pg-home .clients-grid');
+  if (!clients) return;
+  clients.addEventListener('mousemove', function(e) {
+    var c = e.target.closest('.client-card:not(.ph)');
+    if (!c || c.classList.contains('vanishIn')) return;
+    var r = c.getBoundingClientRect();
+    var x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+    c.style.transform = 'perspective(900px) rotateX(' + (-y * 5).toFixed(2) + 'deg) rotateY(' + (x * 6).toFixed(2) + 'deg) translateY(-3px)';
+  });
+  clients.addEventListener('mouseout', function(e) {
+    var c = e.target.closest('.client-card');
+    if (c && !c.contains(e.relatedTarget)) c.style.transform = '';
   });
 }
 
@@ -257,10 +317,9 @@ function homeInit() {
   homeReveal();
 }
 
-/* called whenever the home page is shown (see navigation.js) */
+/* called whenever the home page is shown (see animations.js / animateHero) */
 function homeEnter() {
   heroNet.resize();
   heroNet.start();
-  homeCountUp(true);
   homeReveal();
 }

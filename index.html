@@ -93,122 +93,120 @@
       <div class="ey"><span class="live-dot"></span>Network Engineering &middot; Transmission</div>
       <h1><span class="hl"><span>Transmission</span></span> <span class="hl"><span>Portal</span></span></h1>
       <p>Internal tools and reports for the Transmission team</p>
-      <div class="hero-stats">
-        <a class="hs" href="#/lambdas"><b id="hs-ch">0</b><span>canais ativos</span></a>
-        <a class="hs" href="#/lambdas"><b id="hs-sites">0</b><span>sites DWDM</span></a>
-        <a class="hs" href="#/rmas"><b id="hs-rma">0</b><span>RMAs abertos</span></a>
-        <div class="hs"><b id="hs-dmd">0</b><span>demandas</span></div>
-      </div>
     </div>
   </div>
 
-  <div class="wrap">
-
-    <!-- DEMANDS -->
-    <div style="margin-bottom:40px;">
-      <div class="sec-lbl" data-reveal><span class="sec-num">01</span>Demandas</div>
-      <div class="notes-grid" id="notes-grid" data-reveal style="--d:.08s">
-        <div class="note-card note-add" id="note-add-card" onclick="expandAddNote()">
-          <div class="nadd-default" style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-            <div class="nadd-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  <div class="wrap home-grid">
+    <div class="home-main">
+      <!-- TOOLS -->
+      <div class="home-block">
+        <div class="sec-lbl" data-reveal><span class="sec-num">01</span>Tools</div>
+        <div class="act-grid home-tools" style="max-width:none;">
+          <a class="act-card" data-reveal style="--d:0.00s" href="#/rmas">
+            <span class="rma-tool-count" id="rma-tool-count"></span>
+            <div class="act-icon">
+              <svg class="ic-box" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                <polyline class="lid" points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
               </svg>
             </div>
-            <span class="nadd-lbl">Nova demanda</span>
-          </div>
-          <div class="nadd-form">
-            <textarea class="nadd-textarea" id="nadd-text" placeholder="Descreva a demanda..." rows="3" onclick="event.stopPropagation()"></textarea>
-            <div class="nadd-pills">
-              <button class="nadd-pill urg sel" data-p="urgente" onclick="nadd_pickPrio(this);event.stopPropagation()">&#9650; 6h</button>
-              <button class="nadd-pill med"     data-p="media"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9679; 1d</button>
-              <button class="nadd-pill bai"     data-p="baixa"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9632; 7d</button>
-              <button class="nadd-pill sempre"  data-p="sempre"  onclick="nadd_pickPrio(this);event.stopPropagation()">&#8734; Sempre</button>
+            <div class="act-name">RMAs</div>
+            <div class="act-desc">Track equipment returns (RMA) sent for repair or replacement</div>
+            <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+          </a>
+          <a class="act-card" data-reveal style="--d:0.06s" href="#/lambdas">
+            <span class="lmb-tool-count" id="lmb-tool-count"></span>
+            <div class="act-icon">
+              <svg class="ic-net" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path class="e" d="M7 6h10"/><path class="e" d="M6 8l5 8.5"/><path class="e" d="M18 8l-5 8.5"/>
+                <circle class="n" cx="5" cy="6" r="2"/><circle class="n" cx="19" cy="6" r="2"/><circle class="n" cx="12" cy="18" r="2"/>
+              </svg>
             </div>
-            <div class="nadd-actions">
-              <button class="nadd-save"   onclick="saveNoteAdd(event)">Salvar</button>
-              <button class="nadd-cancel" onclick="cancelAddNote(event)">&#10005;</button>
+            <div class="act-name">Lambdas</div>
+            <div class="act-desc">DWDM network map &mdash; channels in use per span, client and grid</div>
+            <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+          </a>
+          <a class="act-card" data-reveal style="--d:0.12s" href="#/loa">
+            <div class="act-icon">
+              <svg class="ic-doc" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline class="fold" points="14 2 14 8 20 8"/><line class="t" x1="8" y1="13" x2="16" y2="13"/><line class="t t2" x1="8" y1="17" x2="16" y2="17"/>
+              </svg>
+            </div>
+            <div class="act-name">Generate LOA</div>
+            <div class="act-desc">Create a Letter of Authorization and export as PDF</div>
+            <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+          </a>
+          <a class="act-card" data-reveal style="--d:0.18s" href="#/rfo">
+            <div class="act-icon">
+              <svg class="ic-doc" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline class="fold" points="14 2 14 8 20 8"/><line class="t" x1="8" y1="13" x2="16" y2="13"/><line class="t t2" x1="8" y1="17" x2="16" y2="17"/>
+              </svg>
+            </div>
+            <div class="act-name">Generate RFO</div>
+            <div class="act-desc">Create a Reason for Outage report for any customer and export as PDF</div>
+            <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+          </a>
+        </div>
+      </div>
+
+      <!-- CLIENTS -->
+      <div class="home-block">
+      <div class="sec-lbl" data-reveal><span class="sec-num">03</span>Clients</div>
+      <div class="clients-grid">
+        <a class="client-card" href="#/amazon-leo">
+          <div class="card-thumb"><img src="assets/images/amazon-leo-card.jpg" alt="Amazon Leo"/></div>
+          <div class="card-body"><div class="card-name">Amazon Leo</div><div class="card-desc">Reports &amp; tools</div></div>
+        </a>
+        <a class="client-card" href="#/starlink">
+          <div class="card-thumb"><img src="assets/images/starlink-card.jpg" alt="Starlink"/></div>
+          <div class="card-body"><div class="card-name">Starlink</div><div class="card-desc">Reports &amp; tools</div></div>
+        </a>
+        <div class="client-card ph">
+          <div class="card-thumb empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>
+            </svg>
+          </div>
+          <div class="card-body"><div class="card-name">Coming soon</div><div class="card-desc">New client</div></div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <aside class="home-side">
+      <!-- DEMANDS -->
+      <div class="home-block">
+        <div class="sec-lbl" data-reveal><span class="sec-num">02</span>Demandas</div>
+        <div class="notes-grid" id="notes-grid" data-reveal style="--d:.08s">
+          <div class="note-card note-add" id="note-add-card" onclick="expandAddNote()">
+            <div class="nadd-default" style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <div class="nadd-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </div>
+              <span class="nadd-lbl">Nova demanda</span>
+            </div>
+            <div class="nadd-form">
+              <textarea class="nadd-textarea" id="nadd-text" placeholder="Descreva a demanda..." rows="3" onclick="event.stopPropagation()"></textarea>
+              <div class="nadd-pills">
+                <button class="nadd-pill urg sel" data-p="urgente" onclick="nadd_pickPrio(this);event.stopPropagation()">&#9650; 6h</button>
+                <button class="nadd-pill med"     data-p="media"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9679; 1d</button>
+                <button class="nadd-pill bai"     data-p="baixa"   onclick="nadd_pickPrio(this);event.stopPropagation()">&#9632; 7d</button>
+                <button class="nadd-pill sempre"  data-p="sempre"  onclick="nadd_pickPrio(this);event.stopPropagation()">&#8734; Sempre</button>
+              </div>
+              <div class="nadd-actions">
+                <button class="nadd-save"   onclick="saveNoteAdd(event)">Salvar</button>
+                <button class="nadd-cancel" onclick="cancelAddNote(event)">&#10005;</button>
+              </div>
             </div>
           </div>
+          <!-- demand note cards rendered by JS -->
         </div>
-        <!-- demand note cards rendered by JS -->
       </div>
-    </div>
-
-    <!-- CLIENTS -->
-    <div class="sec-lbl" data-reveal><span class="sec-num">02</span>Clients</div>
-    <div class="clients-grid">
-      <a class="client-card" href="#/amazon-leo">
-        <div class="card-thumb"><img src="assets/images/amazon-leo-card.jpg" alt="Amazon Leo"/></div>
-        <div class="card-body"><div class="card-name">Amazon Leo</div><div class="card-desc">Reports &amp; tools</div></div>
-      </a>
-      <a class="client-card" href="#/starlink">
-        <div class="card-thumb"><img src="assets/images/starlink-card.jpg" alt="Starlink"/></div>
-        <div class="card-body"><div class="card-name">Starlink</div><div class="card-desc">Reports &amp; tools</div></div>
-      </a>
-      <div class="client-card ph">
-        <div class="card-thumb empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6e6e73" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>
-          </svg>
-        </div>
-        <div class="card-body"><div class="card-name">Coming soon</div><div class="card-desc">New client</div></div>
-      </div>
-    </div>
-
-    <!-- TOOLS -->
-    <div style="margin-top:40px;">
-      <div class="sec-lbl" data-reveal><span class="sec-num">03</span>Tools</div>
-      <div class="act-grid home-tools" style="max-width:none;">
-        <a class="act-card" data-reveal style="--d:0.00s" href="#/rmas">
-          <span class="rma-tool-count" id="rma-tool-count"></span>
-          <div class="act-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-          </div>
-          <div class="act-name">RMAs</div>
-          <div class="act-desc">Track equipment returns (RMA) sent for repair or replacement</div>
-          <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
-        </a>
-        <a class="act-card" data-reveal style="--d:0.06s" href="#/lambdas">
-          <span class="lmb-tool-count" id="lmb-tool-count"></span>
-          <div class="act-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>
-              <path d="M7 6h10M6 8l5 8.5M18 8l-5 8.5"/>
-            </svg>
-          </div>
-          <div class="act-name">Lambdas</div>
-          <div class="act-desc">DWDM network map &mdash; channels in use per span, client and grid</div>
-          <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
-        </a>
-        <a class="act-card" data-reveal style="--d:0.12s" href="#/loa">
-          <div class="act-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-          </div>
-          <div class="act-name">Generate LOA</div>
-          <div class="act-desc">Create a Letter of Authorization and export as PDF</div>
-          <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
-        </a>
-        <a class="act-card" data-reveal style="--d:0.18s" href="#/rfo">
-          <div class="act-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-          </div>
-          <div class="act-name">Generate RFO</div>
-          <div class="act-desc">Create a Reason for Outage report for any customer and export as PDF</div>
-          <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
-        </a>
-      </div>
-    </div>
-
+    </aside>
   </div>
   <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
 </div>

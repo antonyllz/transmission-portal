@@ -2,19 +2,6 @@
    SKELETON LOADING SYSTEM
    ═══════════════════════════════ */
 
-function buildSkClientCards(n) {
-  var h = '';
-  for (var i = 0; i < n; i++) {
-    h += '<div class="sk-client-card" style="animation-delay:' + (i * 0.1) + 's">'
-       +   '<div class="sk sk-thumb"></div>'
-       +   '<div class="sk-body">'
-       +     '<div class="sk sk-line-a"></div>'
-       +     '<div class="sk sk-line-b"></div>'
-       +   '</div>'
-       + '</div>';
-  }
-  return h;
-}
 
 function buildSkNotes(n) {
   var h = '';
@@ -47,19 +34,6 @@ function buildSkNotifItems(n) {
 }
 
 /* ── CLIENT CARDS: skeleton → real ── */
-function initClientSkeletons() {
-  var grid = document.querySelector('.clients-grid');
-  if (!grid) return;
-  var realCards = grid.innerHTML;
-  grid.innerHTML = buildSkClientCards(3);
-  setTimeout(function() {
-    grid.innerHTML = realCards;
-    grid.querySelectorAll('.client-card').forEach(function(c, i) {
-      c.classList.add('sk-reveal');
-      c.style.animationDelay = (i * 0.1) + 's';
-    });
-  }, 650);
-}
 
 /* ── NOTE BOARD: skeleton → real ── */
 function renderNoteBoardWithSkeleton() {
