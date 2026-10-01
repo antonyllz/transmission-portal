@@ -69,7 +69,8 @@ var PAGE_ROUTES = {
   'pg-tl-detail':   { path: function() { return 'amazon-leo/timeline/' + encodeURIComponent(activeId); },
                       title: function() { return 'Case #' + activeId; } },
   'pg-rma':         { path: 'rmas',                    title: 'RMAs' },
-  'pg-lambdas':     { path: 'lambdas',                 title: 'Lambdas' }
+  'pg-lambdas':     { path: 'lambdas',                 title: 'Lambdas' },
+  'pg-alm':         { path: 'almoxarifado',            title: 'Almoxarifado' }
 };
 
 var ROUTE_OPENERS = {
@@ -82,7 +83,8 @@ var ROUTE_OPENERS = {
   'amazon-leo/timeline':     function() { openTLList(); },
   'amazon-leo/timeline/new': function() { showPage('pg-tl-new'); },
   'rmas':                    function() { openRMA(); },
-  'lambdas':                 function() { openLambdas(); }
+  'lambdas':                 function() { openLambdas(); },
+  'almoxarifado':            function() { openAlm(); }
 };
 
 var routeSilent = false;   /* true while the router itself is opening a page */
@@ -101,7 +103,7 @@ function routeSyncUrl(id) {
   if (routeSilent) return;
   var path = routeVal(r.path);
   var cur  = routeCurrentPath();
-  if (cur === path || (id === 'pg-lambdas' && cur.indexOf('lambdas/') === 0)) return;
+  if (cur === path || (id === 'pg-lambdas' && cur.indexOf('lambdas/') === 0) || (id === 'pg-alm' && cur.indexOf('almoxarifado/') === 0)) return;
   history.pushState(null, '', path ? '#/' + path : location.pathname + location.search);
 }
 
@@ -118,6 +120,7 @@ function routeFromHash() {
     if (ROUTE_OPENERS.hasOwnProperty(p)) ROUTE_OPENERS[p]();
     else if ((m = p.match(/^amazon-leo\/timeline\/(.+)$/)) && dbGetCase(m[1])) openDetail(m[1]);
     else if ((m = p.match(/^lambdas\/(link|site|channel)\/(.+)$/))) { openLambdas(); lmbSelect(m[1], m[2]); }
+    else if ((m = p.match(/^almoxarifado\/(.+)$/))) { almOpenWith(m[1]); }
     else showPage('pg-home');
   } finally {
     routeSilent = false;

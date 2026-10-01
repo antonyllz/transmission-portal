@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="assets/css/profile.css"/>
   <link rel="stylesheet" href="assets/css/rma.css"/>
   <link rel="stylesheet" href="assets/css/lambdas.css"/>
+  <link rel="stylesheet" href="assets/css/alm.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magic.css@latest/magic.min.css"/>
 </head>
@@ -148,6 +149,18 @@
             <div class="act-desc">Create a Reason for Outage report for any customer and export as PDF</div>
             <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
           </a>
+          <div class="act-card alm-quick" data-reveal style="--d:0.24s" onclick="if(!event.target.closest('input,button'))location.hash='#/almoxarifado'">
+            <div class="act-icon"><svg class="ic-alm" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="shelf" d="M3 21V7l9-4 9 4v14"/><path class="shelf" d="M3 13h18M3 17h18"/><g class="lens"><circle cx="15.5" cy="9.5" r="2.6"/><line x1="17.4" y1="11.4" x2="19.2" y2="13.2"/></g></svg></div>
+            <div class="alm-quick-text">
+              <div class="act-name">Almoxarifado</div>
+              <div class="act-desc">Encontre o código de qualquer item do estoque <span class="alm-tool-count" id="alm-tool-count"></span></div>
+            </div>
+            <form class="alm-quick-form" onsubmit="event.preventDefault(); almOpenWith(this.q.value)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input name="q" type="text" autocomplete="off" placeholder="Buscar por descrição, código ou NCM…"/>
+              <button type="submit" aria-label="Buscar">Buscar</button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -458,6 +471,55 @@
 
 
 <!-- ══════════════════════════════════════════
+     ALMOXARIFADO — item catalog search
+══════════════════════════════════════════ -->
+<div id="pg-alm" class="page">
+  <div class="sub-topbar">
+    <button onclick="showPage('pg-home')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Home
+    </button>
+    <span class="sep">/</span><span class="crumb">Almoxarifado</span>
+  </div>
+  <div class="alm-hero">
+    <div class="alm-hero-inner">
+      <div class="alm-hero-top">
+        <div>
+          <div class="ey"><span class="live-dot"></span>Relatório de itens</div>
+          <h2>Almoxarifado</h2>
+          <div class="alm-meta" id="alm-meta">Carregando…</div>
+        </div>
+        <div class="alm-hero-actions">
+          <button class="alm-import" id="alm-import" onclick="almPickFile()" title="Importar uma nova versão do relatório (.xlsx)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Atualizar planilha
+          </button>
+          <input type="file" id="alm-file" accept=".xlsx,.xls" style="display:none" onchange="almFileChosen(this)"/>
+        </div>
+      </div>
+      <div class="alm-search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="alm-q" autocomplete="off" spellcheck="false" placeholder="Buscar por descrição, código ou NCM — ex.: sfp 10g, cabo optico, 1004387"/>
+        <button class="alm-clear" id="alm-clear" onclick="almClear()" aria-label="Limpar">×</button>
+        <kbd>/</kbd>
+      </div>
+      <div class="alm-hints"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> copiar código</span><span><kbd>Esc</kbd> limpar</span><span>clique numa linha para copiar</span></div>
+    </div>
+  </div>
+  <div class="alm-body">
+    <div class="alm-filters">
+      <div class="alm-cats" id="alm-cats"></div>
+      <select id="alm-tipo" class="alm-tipo"></select>
+    </div>
+    <div class="alm-status" id="alm-status"></div>
+    <div class="alm-list" id="alm-list"></div>
+  </div>
+  <div class="alm-toast" id="alm-toast"></div>
+  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
      CASE TIMELINE — LIST
 ══════════════════════════════════════════ -->
 <div id="pg-tl-list" class="page">
@@ -623,6 +685,7 @@
 <script src="assets/js/network-routes.js"></script>
 <script src="assets/js/osa.js"></script>
 <script src="assets/js/lambdas.js"></script>
+<script src="assets/js/alm.js"></script>
 <script src="assets/js/home.js"></script>
 <script src="assets/js/notifications.js"></script>
 <script src="assets/js/app.js"></script>

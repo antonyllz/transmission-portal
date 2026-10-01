@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateBadge();
     updateRmaToolCount();
     updateLmbToolCount();
+    almInitCount();
     renderNoteBoardWithSkeleton();
     if (routeCurrentPath()) routeFromHash();
     dbStartPolling(8000);
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ── Initial animations ── */
   animateLogo();
   homeInit();
+  almInit();
   animateHero();
   animateClientCards();
   bindRipples();

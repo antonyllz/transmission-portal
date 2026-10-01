@@ -20,7 +20,9 @@ const FILES = {
   demands: path.join(DATA_DIR, 'demands.json'),
   rmas:    path.join(DATA_DIR, 'rmas.json'),
   lambdas: path.join(DATA_DIR, 'lambdas.json'),
-  netpos:  path.join(DATA_DIR, 'netpos.json')
+  netpos:  path.join(DATA_DIR, 'netpos.json'),
+  itens:     path.join(DATA_DIR, 'itens.json'),      /* almoxarifado catalog */
+  itensmeta: path.join(DATA_DIR, 'itensmeta.json')
 };
 
 function readCollection(name) {
