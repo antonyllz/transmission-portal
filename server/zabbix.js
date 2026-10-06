@@ -63,8 +63,12 @@ function toISO(ts, date, time, offset) {
   return null;
 }
 
+/* the Zabbix 'Test' button (and some operations) leave macros unresolved, e.g. '{HOST.HOST}' */
+const MACRO = /^{[A-Z0-9_.#$]+}$/;
+
 function handle(body, store) {
-  const b = body || {};
+  const b = {};
+  Object.keys(body || {}).forEach((k) => { const v = body[k]; b[k] = typeof v === 'string' && MACRO.test(v.trim()) ? '' : v; });
   const now = new Date().toISOString();
   const offset = b.tz_offset || '-03:00';
   const ev = {
