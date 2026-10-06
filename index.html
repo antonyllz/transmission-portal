@@ -16,7 +16,6 @@
   <link rel="stylesheet" href="assets/css/rma.css"/>
   <link rel="stylesheet" href="assets/css/lambdas.css"/>
   <link rel="stylesheet" href="assets/css/alm.css"/>
-  <link rel="stylesheet" href="assets/css/leo-dash.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magic.css@latest/magic.min.css"/>
 </head>
@@ -259,7 +258,7 @@
           </svg>
         </div>
         <div class="act-name">Dashboard</div>
-        <div class="act-desc">Status dos circuitos SLZ501 e CPV501 e eventos da rede em tempo real (Zabbix)</div>
+        <div class="act-desc">Status page dos sites SLZ501 e CPV501 — a mesma visão que o cliente recebe</div>
         <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
       </a>
       <a class="act-card" data-reveal style="--d:.06s" href="#/amazon-leo/rfo">
@@ -531,7 +530,7 @@
 
 
 <!-- ══════════════════════════════════════════
-     AMAZON LEO — LIVE DASHBOARD (Zabbix)
+     AMAZON LEO — CLIENT STATUS PAGE (iframe of /leo/, also shared with the client)
 ══════════════════════════════════════════ -->
 <div id="pg-leo-dash" class="page">
   <div class="sub-topbar">
@@ -540,42 +539,10 @@
       Amazon Leo
     </button>
     <span class="sep">/</span><span class="crumb">Dashboard</span>
+    <a class="leo-ext" href="leo/" target="_blank" rel="noopener">Abrir link do cliente
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
   </div>
-  <div class="leo-hero">
-    <div class="leo-inner">
-      <div class="leo-hero-top">
-        <div>
-          <div class="ey"><span class="live-dot"></span>Amazon Leo &middot; Monitoramento em tempo real</div>
-          <h2>Dashboard</h2>
-        </div>
-        <span class="leo-zbx wait" id="leo-zbx"><i></i>Carregando&hellip;</span>
-      </div>
-      <div class="leo-seg" id="leo-site">
-        <button data-s="" class="sel" onclick="leoSetSite('')">Todos os sites</button>
-        <button data-s="SLZ501" onclick="leoSetSite('SLZ501')">SLZ501 <em>Ocara / CE</em></button>
-        <button data-s="CPV501" onclick="leoSetSite('CPV501')">CPV501 <em>Sanhar&oacute; / PE</em></button>
-      </div>
-      <div class="leo-summary" id="leo-summary"></div>
-    </div>
-  </div>
-  <div class="leo-body">
-    <div class="sec-lbl">Circuitos</div>
-    <div class="leo-sites" id="leo-sites"></div>
-
-    <div class="leo-ev-bar">
-      <div class="sec-lbl">Eventos da rede <span class="leo-ev-count" id="leo-ev-count"></span></div>
-      <div class="leo-ev-filters">
-        <div class="leo-seg small" id="leo-state">
-          <button data-v="all" class="sel" onclick="leoSetState('all')">Todos</button>
-          <button data-v="active" onclick="leoSetState('active')">Ativos</button>
-          <button data-v="resolved" onclick="leoSetState('resolved')">Resolvidos</button>
-        </div>
-      </div>
-    </div>
-    <div class="leo-events" id="leo-events"></div>
-
-  </div>
-  <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
+  <iframe id="leo-frame" src="" title="Amazon Leo network status" style="width:100%;height:calc(100vh - 52px - 44px);border:none;display:block;background:#04060d;"></iframe>
 </div>
 
 
@@ -746,7 +713,6 @@
 <script src="assets/js/osa.js"></script>
 <script src="assets/js/lambdas.js"></script>
 <script src="assets/js/alm.js"></script>
-<script src="assets/js/leo-dash.js"></script>
 <script src="assets/js/home.js"></script>
 <script src="assets/js/notifications.js"></script>
 <script src="assets/js/app.js"></script>

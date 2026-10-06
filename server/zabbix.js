@@ -110,9 +110,34 @@ function handle(body, store) {
   const meta = store.read('leozbxmeta')[0] || { received: 0 };
   meta.received = (meta.received || 0) + 1;
   meta.lastReceivedAt = now;
+  if (!meta.firstReceivedAt) meta.firstReceivedAt = now;
   meta.lastHost = ev.host;
   store.write('leozbxmeta', [meta]);
   return { ok: true, eventId: rec.eventId, status: rec.status, site: rec.site, circuit: rec.circuit };
 }
 
-module.exports = { loadToken, sameSecret, handle };
+/* Client-facing view (GET /api/leo/status, no token): only Amazon Leo circuits, no hosts,
+   IPs or trigger text. Severity High+ = outage, Warning/Average = degradation,
+   Information / Not classified are internal noise and left out. */
+const CIRCUIT_IDS = Object.keys(CIRCUITS);
+function publicStatus(store) {
+  const meta = store.read('leozbxmeta')[0] || null;
+  const since = Date.now() - 90 * 86400000;
+  const events = store.read('leoalarms')
+    .filter((a) => a.circuit && CIRCUIT_IDS.indexOf(a.circuit) >= 0 && a.severity >= 2)
+    .filter((a) => a.status === 'problem' || new Date(a.end || a.start).getTime() >= since)
+    .map((a) => ({
+      id: crypto.createHash('sha1').update(String(a.eventId)).digest('hex').slice(0, 10),
+      circuit: a.circuit, site: CIRCUITS[a.circuit],
+      type: a.severity >= 4 ? 'outage' : 'degradation',
+      status: a.status === 'problem' ? 'ongoing' : 'resolved',
+      start: a.start, end: a.end || null
+    }));
+  return {
+    generatedAt: new Date().toISOString(),
+    monitoringSince: meta ? (meta.firstReceivedAt || meta.lastReceivedAt) : null,
+    events
+  };
+}
+
+module.exports = { loadToken, sameSecret, handle, publicStatus };

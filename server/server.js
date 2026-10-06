@@ -72,6 +72,13 @@ const server = http.createServer((req, res) => {
   const url   = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean); // ['api','cases']
 
+  /* public, sanitized status for the Amazon Leo client page */
+  if (url.pathname === '/api/leo/status') {
+    if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
+    send(res, 200, zabbix.publicStatus(store));
+    return;
+  }
+
   /* Zabbix webhook: POST /api/zabbix/webhook with the shared token (header X-Portal-Token or ?token=) */
   if (url.pathname === '/api/zabbix/webhook') {
     if (req.method !== 'POST') { send(res, 405, { error: 'Use POST' }); return; }

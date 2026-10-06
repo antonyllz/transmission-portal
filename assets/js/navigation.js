@@ -42,6 +42,11 @@ function openLOA() {
   showPage('pg-loa');
 }
 
+function openLeoDash() {
+  document.getElementById('leo-frame').src = 'leo/?v=' + Date.now();
+  showPage('pg-leo-dash');
+}
+
 function openRFOGeneric() {
   document.getElementById('rfo-generic-frame').src = 'rfo-generic/index.html?v=' + Date.now();
   showPage('pg-rfo-generic');

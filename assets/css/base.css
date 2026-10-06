@@ -261,3 +261,7 @@ input[type=time] { color-scheme: light; }
 /* ── CARDS AS LINKS (open in new tab) ── */
 a.act-card, a.client-card { text-decoration: none; color: inherit; }
 a.client-card { display: block; }
+
+/* sub-topbar action on the right (e.g. open the client link) */
+.sub-topbar .leo-ext { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--blue); text-decoration: none; padding: 6px 10px; border-radius: 6px; }
+.sub-topbar .leo-ext:hover { background: #f0f4ff; }
