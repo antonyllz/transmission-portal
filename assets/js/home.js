@@ -39,38 +39,83 @@ function HeroNet(canvasId, opts) {
     return { pts: pts, d: d, len: d[d.length - 1] || 1 };
   }
 
+  /* A made-up landmass: radius modulated by a few seeded harmonics gives an irregular
+     coast with bays and a peninsula — reads as "a map" without being any real one. */
+  var land = null;
+  function makeLand(rand, wide) {
+    var h = [2, 3, 4, 6, 9, 13].map(function(k, i) { return { k: k, a: [.2, .15, .1, .07, .045, .025][i] * (.8 + rand() * .4), p: rand() * 6.283 }; });
+    var cx = wide ? W * .73 : W * .5, cy = H * .52, R = wide ? Math.min(H * .56, W * .16) : Math.min(H * .5, W * .34);
+    return {
+      cx: cx, cy: cy, R: R, sx: 1.55, sy: 1, rot: -.42,
+      r: function(t) {
+        var v = 1;
+        h.forEach(function(o) { v += o.a * Math.sin(o.k * t + o.p); });
+        var g = function(c, wd) { var d = (((t - c) % 6.283) + 6.283) % 6.283 - 3.1416; return Math.exp(-Math.pow(3.1416 - Math.abs(d), 2) * wd); };
+        v += .3 * g(.5, 9) - .26 * g(2.4, 14) + .18 * g(4.4, 7);   /* peninsula, gulf, cape */
+        return R * v;
+      },
+      /* 0 at the centre, 1 on the coast, >1 outside */
+      q: function(x, y) {
+        var dx = (x - cx) / this.sx, dy = (y - cy) / this.sy, c = Math.cos(this.rot), si = Math.sin(this.rot);
+        var u = dx * c + dy * si, w = -dx * si + dy * c;
+        return Math.hypot(u, w) / this.r(Math.atan2(w, u));
+      },
+      at: function(t, k) {
+        var rr = this.r(t) * (k || 1), u = Math.cos(t) * rr, w = Math.sin(t) * rr, c = Math.cos(this.rot), si = Math.sin(this.rot);
+        return [cx + (u * c - w * si) * this.sx, cy + (u * si + w * c) * this.sy];
+      }
+    };
+  }
+
   function build() {
     var wide = W > 760, rand = rng(1550);
-    var x0 = wide ? W * 0.44 : 0, x1 = W + 20, y0 = -10, y1 = H + 10;
+    land = makeLand(rand, wide);
     layers = [
-      { depth: .45, alpha: .55, count: wide ? 26 : 14, nodes: [], edges: [] },
-      { depth: 1,   alpha: 1,   count: wide ? 30 : 16, nodes: [], edges: [] }
+      { depth: .45, alpha: .55, count: wide ? 34 : 18, nodes: [], edges: [] },
+      { depth: 1,   alpha: 1,   count: wide ? 40 : 22, nodes: [], edges: [] }
     ];
-    layers.forEach(function(L) {
-      var aw = x1 - x0, ah = y1 - y0, cols = Math.ceil(Math.sqrt(L.count * aw / ah)), rows = Math.ceil(L.count / cols);
-      for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-        L.nodes.push({
-          x: x0 + (c + .15 + rand() * .7) * aw / cols, y: y0 + (r + .15 + rand() * .7) * ah / rows,
-          adj: [], glow: 0, core: rand() < .3, ph: rand() * 6.28
-        });
+    layers.forEach(function(L, li) {
+      /* dart throwing: random points inside the coast, kept apart by a minimum distance */
+      var area = Math.PI * land.R * land.R * land.sx * land.sy, minD = Math.sqrt(area / L.count) * .62, tries = 0;
+      while (L.nodes.length < L.count && tries++ < 6000) {
+        var x = land.cx + (rand() * 2 - 1) * land.R * 1.5, y = land.cy + (rand() * 2 - 1) * land.R * 1.55;
+        if (land.q(x, y) > .96 - li * .04) continue;
+        if (L.nodes.some(function(n) { return Math.hypot(n.x - x, n.y - y) < minD; })) continue;
+        L.nodes.push({ x: x, y: y, adj: [], glow: 0, core: rand() < .3, ph: rand() * 6.28 });
       }
-      /* fibers: each node to its 2 nearest neighbours, plus a few longer links */
+      /* fibers: nearest neighbours, only overland (the midpoint must be inside the coast) */
       var seen = {};
       L.nodes.forEach(function(n, i) {
         var near = L.nodes.map(function(m, j) { return { j: j, d: Math.hypot(m.x - n.x, m.y - n.y) }; })
-          .filter(function(o) { return o.j !== i; }).sort(function(a, b) { return a.d - b.d; });
-        var pick = near.slice(0, 2).concat(rand() < .25 ? [near[2 + Math.floor(rand() * 3)]] : []);
-        pick.forEach(function(o) {
-          if (!o) return;
-          var k = Math.min(i, o.j) + '-' + Math.max(i, o.j);
-          if (seen[k]) return;
+          .filter(function(o) { return o.j !== i && o.d < minD * 2.6; }).sort(function(a, b) { return a.d - b.d; });
+        near.slice(0, rand() < .3 ? 3 : 2).forEach(function(o) {
+          var m = L.nodes[o.j], k = Math.min(i, o.j) + '-' + Math.max(i, o.j);
+          if (seen[k] || land.q((n.x + m.x) / 2, (n.y + m.y) / 2) > 1) return;
           seen[k] = true;
-          var e = { a: i, b: o.j, c: curve(n, L.nodes[o.j], (rand() - .5) * .35) };
+          var e = { a: i, b: o.j, c: curve(n, m, (rand() - .5) * .3) };
           L.edges.push(e);
-          n.adj.push(e); L.nodes[o.j].adj.push(e);
+          n.adj.push(e); m.adj.push(e);
         });
       });
     });
+    /* coastline (and a faint inner contour) drawn as dotted lines */
+    land.coast = []; land.inner = [];
+    for (var t = 0; t <= 6.2832 + .001; t += .03) { land.coast.push(land.at(t)); land.inner.push(land.at(t, .72)); }
+    /* a few islands off the coast */
+    land.isles = [[.15, 1.28, .09], [.55, 1.24, .06], [3.6, 1.2, .07]].map(function(o) {
+      var c = land.at(o[0], o[1]), r = land.R * o[2], pts = [];
+      for (var t2 = 0; t2 <= 6.2832 + .001; t2 += .35) pts.push([c[0] + Math.cos(t2) * r * (1 + .25 * Math.sin(3 * t2 + o[0])) * 1.4, c[1] + Math.sin(t2) * r * (1 + .25 * Math.sin(3 * t2 + o[0]))]);
+      return pts;
+    });
+  }
+
+  /* opacity: fades towards the coast, the hero edges and (on wide screens) the text column */
+  function fadeAt(x, y) {
+    var q = land ? land.q(x, y) : 0;
+    var coast = 1 - Math.min(1, Math.max(0, (q - .55) / .45));
+    var edge = Math.min(1, x / 60, (W - x) / 90, y / 40, (H - y) / 40);
+    var text = W > 760 ? Math.min(1, Math.max(0, (x - W * .4) / (W * .18))) : .6;
+    return Math.max(0, Math.min(coast * coast * (3 - 2 * coast), edge, text));
   }
 
   function at(c, s) {
@@ -114,7 +159,7 @@ function HeroNet(canvasId, opts) {
   /* ── typed words: little annotations that type themselves near a node ── */
   function spawnWord() {
     var L = layers[1], n = L.nodes[Math.floor(Math.random() * L.nodes.length)];
-    if (!n || n.x < (W > 760 ? W * .5 : 0) || n.x > W - 150 || n.y < 34 || n.y > H - 18) return;
+    if (!n || n.x < (W > 760 ? W * .5 : 0) || n.x > W - 150 || n.y < 34 || n.y > H - 18 || fadeAt(n.x, n.y) < .6) return;
     var text = LEXICON[Math.floor(Math.random() * LEXICON.length)];
     if (words.some(function(w) { return w.text === text || Math.hypot(w.n.x - n.x, w.n.y - n.y) < 150; })) return;
     words.push({ n: n, text: text, shown: 0, phase: 'type', hold: 0, dx: 14 + Math.random() * 18, dy: -10 - Math.random() * 14 });
@@ -151,13 +196,24 @@ function HeroNet(canvasId, opts) {
     ctx.clearRect(0, 0, W, H);
     px += (mx - px) * Math.min(1, dt * 4); py += (my - py) * Math.min(1, dt * 4);   /* eased parallax */
     var wide = W > 760;
-    var fade = function(x) { return wide ? Math.min(1, Math.max(0, (x - W * .36) / (W * .22))) : .6; };   /* clear the text side */
 
     layers.forEach(function(L) {
       ctx.save(); ctx.translate(px * 22 * L.depth, py * 14 * L.depth);
       ctx.lineWidth = L.depth < 1 ? .8 : 1; ctx.lineCap = 'round';
+      if (L.depth === 1 && land) {   /* coastline + inner contour, dotted, fading with the rest */
+        [[land.coast, .24, [1.5, 5]], [land.inner, .09, [1, 7]]].concat(land.isles.map(function(p) { return [p, .2, [1.5, 4]]; })).forEach(function(cl) {
+          ctx.setLineDash(cl[2]);
+          for (var j = 1; j < cl[0].length; j++) {
+            var p = cl[0][j - 1], p2 = cl[0][j];
+            ctx.strokeStyle = 'rgba(255,255,255,' + (cl[1] * Math.min(Math.min(1, p[0] / 60, (W - p[0]) / 90, p[1] / 40, (H - p[1]) / 40), W > 760 ? Math.min(1, Math.max(0, (p[0] - W * .4) / (W * .18))) : .6)) + ')';
+            ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+          }
+        });
+        ctx.setLineDash([]);
+      }
       L.edges.forEach(function(e) {
-        ctx.strokeStyle = 'rgba(255,255,255,' + (.16 * L.alpha * fade(e.c.pts[9][0])) + ')';
+        var m = e.c.pts[9];
+        ctx.strokeStyle = 'rgba(255,255,255,' + (.2 * L.alpha * fadeAt(m[0], m[1])) + ')';
         ctx.beginPath(); ctx.moveTo(e.c.pts[0][0], e.c.pts[0][1]);
         for (var i = 1; i < e.c.pts.length; i++) ctx.lineTo(e.c.pts[i][0], e.c.pts[i][1]);
         ctx.stroke();
@@ -170,14 +226,14 @@ function HeroNet(canvasId, opts) {
           g.addColorStop(0, 'rgba(210,228,255,' + (.55 * n.glow * L.alpha) + ')'); g.addColorStop(1, 'rgba(210,228,255,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 6.29); ctx.fill();
         }
-        ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, (base + n.glow * .5) * L.alpha * fade(n.x)) + ')';
+        ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, (base + n.glow * .5) * L.alpha * fadeAt(n.x, n.y)) + ')';
         ctx.beginPath(); ctx.arc(n.x, n.y, (n.core ? 2 : 1.3) * (L.depth < 1 ? .8 : 1), 0, 6.29); ctx.fill();
       });
       /* pulses: the tail follows the actual path and fades towards the back */
       pulses.forEach(function(q) {
         if (q.L !== L) return;
         step(q, dt);
-        var t = q.trail, a = Math.max(0, q.fade) * L.alpha;
+        var hd = q.trail[q.trail.length - 1], t = q.trail, a = Math.max(0, q.fade) * L.alpha * (hd ? Math.max(.15, fadeAt(hd[0], hd[1])) : 1);
         for (var i = 1; i < t.length; i++) {
           var k = i / (t.length - 1);
           ctx.strokeStyle = q.tint; ctx.globalAlpha = a * k * k;
