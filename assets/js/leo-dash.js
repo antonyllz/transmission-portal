@@ -28,7 +28,7 @@ var LEO_STATUS = {
   nodata:  { label: 'Sem dados',     cls: 'nodata', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>' }
 };
 
-var leoAlarms = [], leoMeta = null, leoSite = '', leoState = 'all', leoMinSev = 0, leoTimer = 0, leoTick = 0, leoFirst = true;
+var leoAlarms = [], leoMeta = null, leoSite = '', leoState = 'all', leoTimer = 0, leoTick = 0, leoFirst = true;
 
 function openLeoDash() {
   showPage('pg-leo-dash');
@@ -148,7 +148,7 @@ function leoCircuitCard(c, s) {
       + '<em>desde ' + leoTime(a.start) + ' · <span data-dur="' + a.start + '">' + leoDur(a.start) + '</span></em>'
       + (s.active.length > 1 ? '<em>+' + (s.active.length - 1) + ' alarme(s) ativo(s)</em>' : '') + '</div>'
     : s.last ? '<div class="leo-cdetail quiet">Último evento: ' + esc(s.last.trigger) + ' · <span data-ago="' + (s.last.end || s.last.start) + '">' + leoAgo(s.last.end || s.last.start) + '</span></div>'
-    : '<div class="leo-cdetail quiet">' + (leoMeta ? 'Nenhum evento recebido para este circuito' : 'Configure o webhook do Zabbix para ver o status') + '</div>';
+    : '<div class="leo-cdetail quiet">' + (leoMeta ? 'Nenhum evento recebido para este circuito' : 'Aguardando eventos do Zabbix') + '</div>';
   return '<div class="leo-circuit ' + S.cls + '">'
     + '<div class="leo-ctop"><span class="leo-light"><i></i></span>'
     +   '<span class="leo-cstatus">' + S.icon + S.label + '</span></div>'
@@ -164,7 +164,7 @@ function leoRenderEvents() {
     if (leoSite && a.site !== leoSite) return false;
     if (leoState === 'active' && a.status !== 'problem') return false;
     if (leoState === 'resolved' && a.status !== 'resolved') return false;
-    return a.severity >= leoMinSev;
+    return true;
   });
   /* active problems first, then most recent */
   list.sort(function(a, b) { return (a.status === 'problem' ? 0 : 1) - (b.status === 'problem' ? 0 : 1) || String(b.start).localeCompare(String(a.start)); });
@@ -173,7 +173,7 @@ function leoRenderEvents() {
   document.getElementById('leo-ev-count').textContent = list.length ? list.length + (list.length === 1 ? ' evento' : ' eventos') : '';
   if (!list.length) {
     el.innerHTML = '<div class="leo-empty">' + (leoMeta ? '<b>Nenhum evento neste filtro</b><span>Os eventos do Zabbix aparecem aqui em tempo real.</span>'
-      : '<b>Nenhum evento recebido ainda</b><span>Configure o webhook do Zabbix (abaixo) para os alarmes chegarem aqui automaticamente.</span>') + '</div>';
+      : '<b>Nenhum evento recebido ainda</b><span>Os alarmes do Zabbix aparecem aqui automaticamente.</span>') + '</div>';
     return;
   }
   el.innerHTML = '<div class="leo-ev-head"><span>Severidade</span><span>Evento</span><span>Circuito / site</span><span>Início</span><span>Duração</span></div>'
@@ -198,19 +198,3 @@ function leoTickDurations() {
 /* ── filters ── */
 function leoSetSite(s) { leoSite = s; leoRender(); }
 function leoSetState(v) { leoState = v; leoRenderEvents(); }
-function leoSetSev(v) { leoMinSev = +v; leoRenderEvents(); }
-
-/* ── setup panel ── */
-function leoCopy(id) {
-  var t = document.getElementById(id).textContent;
-  var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0';
-  document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); } catch (e) { /* ignore */ }
-  ta.remove();
-  var b = document.querySelector('[data-copy="' + id + '"]');
-  if (b) { var o = b.textContent; b.textContent = 'Copiado!'; setTimeout(function() { b.textContent = o; }, 1400); }
-}
-function leoInitSetup() {
-  var u = document.getElementById('leo-hook-url');
-  if (u) u.textContent = location.protocol + '//' + location.host + '/api/zabbix/webhook';
-}

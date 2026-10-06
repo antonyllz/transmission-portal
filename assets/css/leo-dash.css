@@ -147,7 +147,6 @@
 .leo-ev-bar .sec-lbl { margin-bottom: 0; }
 .leo-ev-count { color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 500; }
 .leo-ev-filters { display: flex; gap: 8px; align-items: center; }
-.leo-sev-filter { width: auto !important; font-size: 12.5px !important; padding: 7px 32px 7px 12px !important; border-radius: 980px !important; }
 .leo-events {
   background: var(--white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
   box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.04); max-height: 640px; overflow-y: auto;
@@ -167,38 +166,6 @@
 .act .leo-ev-dur { color: #b42a2a; font-weight: 600; }
 .leo-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 44px 20px; text-align: center; color: var(--light); font-size: 13px; }
 .leo-empty b { font-size: 15px; color: var(--text); }
-
-/* ── SETUP ── */
-.leo-setup { margin-top: 28px; background: var(--white); border: 1px solid var(--border); border-radius: 16px; }
-.leo-setup summary {
-  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; padding: 16px 18px;
-  font-size: 14px; font-weight: 600; color: var(--text);
-}
-.leo-setup summary::-webkit-details-marker { display: none; }
-.leo-setup summary svg { color: var(--blue); }
-.leo-setup summary::after { content: '+'; margin-left: auto; font-size: 18px; color: var(--light); transition: transform .2s; }
-.leo-setup[open] summary::after { transform: rotate(45deg); }
-.leo-setup-body { padding: 0 18px 18px; font-size: 13px; color: #3a3a3c; line-height: 1.6; }
-.leo-setup-body ol { padding-left: 20px; margin: 12px 0; }
-.leo-setup-body li { margin-bottom: 6px; }
-.leo-setup code { font: 12px ui-monospace, 'SF Mono', Consolas, monospace; background: #f5f5f7; border-radius: 5px; padding: 1px 5px; }
-.leo-kv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
-.leo-kv > span { width: 120px; font-size: 12px; font-weight: 600; color: var(--muted); }
-.leo-kv code { padding: 5px 9px; }
-.leo-copy {
-  border: 1px solid rgba(6,73,252,.25); background: #f0f4ff; color: var(--blue); cursor: pointer;
-  font: 600 11.5px 'Inter', system-ui, sans-serif; padding: 4px 10px; border-radius: 980px; margin-left: 8px;
-}
-.leo-copy:hover { background: var(--blue); color: #fff; }
-.leo-code-h { display: flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--light); margin: 16px 0 6px; }
-.leo-params { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 12px; }
-.leo-params span { font: 600 12px ui-monospace, 'SF Mono', Consolas, monospace; color: var(--text); }
-.leo-params code { background: none; padding: 0; color: var(--blue); }
-.leo-setup pre {
-  background: #0b1220; color: #dbe7ff; border-radius: 12px; padding: 14px 16px; overflow-x: auto;
-  font: 12px/1.6 ui-monospace, 'SF Mono', Consolas, monospace; white-space: pre;
-}
-.leo-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
 /* Amazon Leo card icon: the heartbeat line runs */
 .ic-pulse .beat { stroke-dasharray: 24; animation: ic-beat 2.2s linear infinite; }
@@ -220,7 +187,7 @@
 }
 
 /* ── DARK ── */
-[data-theme="dark"] .leo-site, [data-theme="dark"] .leo-events, [data-theme="dark"] .leo-setup { background: #1c1c1e; border-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .leo-site, [data-theme="dark"] .leo-events { background: #1c1c1e; border-color: rgba(255,255,255,.08); }
 [data-theme="dark"] .leo-circuit { background: #232325; border-color: rgba(255,255,255,.07); }
 [data-theme="dark"] .leo-circuit.down { background: rgba(208,59,59,.12); }
 [data-theme="dark"] .leo-circuit.warn { background: rgba(250,178,25,.1); }
@@ -233,8 +200,6 @@
 [data-theme="dark"] .leo-ev { border-top-color: rgba(255,255,255,.06); }
 [data-theme="dark"] .leo-seg.small { background: #2c2c2e; }
 [data-theme="dark"] .leo-seg.small button.sel { background: #3a3a3c; color: #f0f0f2; box-shadow: none; }
-[data-theme="dark"] .leo-setup-body { color: #d1d1d6; }
-[data-theme="dark"] .leo-setup code { background: #2c2c2e; }
 [data-theme="dark"] .sev0 { background: #2c2c2e; color: #aeaeb2; }
 [data-theme="dark"] .sev2 { color: #fcd34d; }
 [data-theme="dark"] .sev3 { color: #fdba74; }

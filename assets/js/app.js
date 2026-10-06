@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
   animateLogo();
   homeInit();
   almInit();
-  leoInitSetup();
   animateHero();
   animateClientCards();
   bindRipples();

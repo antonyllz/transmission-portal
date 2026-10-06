@@ -570,52 +570,10 @@
           <button data-v="active" onclick="leoSetState('active')">Ativos</button>
           <button data-v="resolved" onclick="leoSetState('resolved')">Resolvidos</button>
         </div>
-        <select class="leo-sev-filter" onchange="leoSetSev(this.value)">
-          <option value="0">Todas as severidades</option>
-          <option value="2">Aten&ccedil;&atilde;o ou maior</option>
-          <option value="3">M&eacute;dia ou maior</option>
-          <option value="4">Alta ou maior</option>
-          <option value="5">Desastre</option>
-        </select>
       </div>
     </div>
     <div class="leo-events" id="leo-events"></div>
 
-    <details class="leo-setup">
-      <summary>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
-        Integra&ccedil;&atilde;o Zabbix &mdash; como configurar o envio dos alarmes
-      </summary>
-      <div class="leo-setup-body">
-        <p>O Zabbix envia cada <b>problema</b> e cada <b>recupera&ccedil;&atilde;o</b> para o portal por um <i>media type</i> do tipo <b>Webhook</b>. O portal decide o status de cada circuito pelos alarmes ativos: severidade <b>Alta</b> ou <b>Desastre</b> = indispon&iacute;vel; abaixo disso = em alerta.</p>
-        <div class="leo-kv"><span>URL do webhook</span><code id="leo-hook-url"></code><button class="leo-copy" data-copy="leo-hook-url" onclick="leoCopy('leo-hook-url')">Copiar</button></div>
-        <div class="leo-kv"><span>Token</span><code>enviado separadamente pelo administrador do portal (cabe&ccedil;alho <b>X-Portal-Token</b>)</code></div>
-        <ol>
-          <li><b>Alertas &rarr; Tipos de m&iacute;dia &rarr; Criar</b>: tipo <b>Webhook</b>, nome &ldquo;Transmission Portal&rdquo;, timeout 10s. Cadastre os par&acirc;metros abaixo e cole o script. Em <b>Modelos de mensagem</b>, adicione Problema, Recupera&ccedil;&atilde;o e Atualiza&ccedil;&atilde;o (o texto pode ser qualquer um).</li>
-          <li><b>Usu&aacute;rios</b>: crie (ou use) um usu&aacute;rio e adicione a m&iacute;dia &ldquo;Transmission Portal&rdquo; (&ldquo;Enviar para&rdquo;: <code>portal</code>).</li>
-          <li><b>Alertas &rarr; A&ccedil;&otilde;es &rarr; Trigger actions</b>: condi&ccedil;&atilde;o pelo grupo de hosts ou pelas tags da Amazon Leo; em <b>Opera&ccedil;&otilde;es</b>, <b>Opera&ccedil;&otilde;es de recupera&ccedil;&atilde;o</b> e <b>Opera&ccedil;&otilde;es de atualiza&ccedil;&atilde;o</b>, envie para esse usu&aacute;rio pelo &ldquo;Transmission Portal&rdquo;.</li>
-          <li><b>Mapeamento</b>: o portal liga o evento ao circuito procurando o ID (<code>RJOOCR964161</code>, <code>SPOOCR964174</code>, <code>21-90090-252671</code>, <code>21-90090-252668</code>) ou o site (<code>SLZ501</code>, <code>CPV501</code>) no host, no nome do trigger, nos dados operacionais ou nas tags. O mais confi&aacute;vel &eacute; usar as tags <code>circuit</code> e <code>site</code> nos triggers.</li>
-        </ol>
-        <div class="leo-code-h">Par&acirc;metros do media type</div>
-        <div class="leo-params"><span>url</span><code>(URL do webhook acima)</code><span>token</span><code>(token do portal)</code><span>event_id</span><code>{EVENT.ID}</code><span>event_value</span><code>{EVENT.VALUE}</code><span>event_update</span><code>{EVENT.UPDATE.STATUS}</code><span>severity</span><code>{EVENT.NSEVERITY}</code><span>severity_name</span><code>{EVENT.SEVERITY}</code><span>host</span><code>{HOST.HOST}</code><span>host_name</span><code>{HOST.NAME}</code><span>host_ip</span><code>{HOST.IP}</code><span>trigger</span><code>{EVENT.NAME}</code><span>opdata</span><code>{EVENT.OPDATA}</code><span>tags</span><code>{EVENT.TAGSJSON}</code><span>event_date</span><code>{EVENT.DATE}</code><span>event_time</span><code>{EVENT.TIME}</code><span>recovery_date</span><code>{EVENT.RECOVERY.DATE}</code><span>recovery_time</span><code>{EVENT.RECOVERY.TIME}</code><span>ack</span><code>{EVENT.ACK.STATUS}</code><span>update_message</span><code>{EVENT.UPDATE.MESSAGE}</code><span>tz_offset</span><code>-03:00</code></div>
-        <div class="leo-code-h">Script <button class="leo-copy" data-copy="leo-script" onclick="leoCopy('leo-script')">Copiar</button></div>
-        <pre id="leo-script">var p = JSON.parse(value), req = new HttpRequest();
-var url = p.url, token = p.token;
-delete p.url; delete p.token;
-req.addHeader('Content-Type: application/json');
-req.addHeader('X-Portal-Token: ' + token);
-var resp = req.post(url, JSON.stringify(p));
-if (req.getStatus() !== 200) {
-  throw 'Portal respondeu HTTP ' + req.getStatus() + ': ' + resp;
-}
-return 'OK';</pre>
-        <div class="leo-code-h">Teste r&aacute;pido (cria um alarme de teste) <button class="leo-copy" data-copy="leo-curl" onclick="leoCopy('leo-curl')">Copiar</button></div>
-        <pre id="leo-curl">curl -X POST "URL_DO_WEBHOOK" \
-  -H "Content-Type: application/json" -H "X-Portal-Token: SEU_TOKEN" \
-  -d '{"event_id":"teste-1","event_value":"1","severity":"4","host":"SLZ501-RTR","trigger":"Teste: link RJOOCR964161 down"}'</pre>
-        <p class="leo-note">Para fechar o teste, envie o mesmo <code>event_id</code> com <code>"event_value":"0"</code>.</p>
-      </div>
-    </details>
   </div>
   <div class="footer-credit">Made by <strong>Antony Ara&uacute;jo</strong> &mdash; Network Engineering (Transmission)</div>
 </div>
