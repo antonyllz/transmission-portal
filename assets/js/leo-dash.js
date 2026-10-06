@@ -20,6 +20,7 @@ var LDB_RANGES = { '1': 'Last 24 hours', '7': 'Last 7 days', '30': 'Last 30 days
 var ldb = { data: null, site: 'SLZ501', range: 30, tz: 'UTC', timer: 0, tick: 0 };
 
 function openLeoDash() {
+  ldb.range = 30; ldb.tz = 'UTC';   /* defaults every time the dashboard is opened */
   showPage('pg-leo-dash');
   ldbRender();
   ldbLoad();
