@@ -22,7 +22,9 @@ const FILES = {
   lambdas: path.join(DATA_DIR, 'lambdas.json'),
   netpos:  path.join(DATA_DIR, 'netpos.json'),
   itens:     path.join(DATA_DIR, 'itens.json'),      /* almoxarifado catalog */
-  itensmeta: path.join(DATA_DIR, 'itensmeta.json')
+  itensmeta: path.join(DATA_DIR, 'itensmeta.json'),
+  leoalarms:  path.join(DATA_DIR, 'leoalarms.json'),     /* Zabbix events (Amazon Leo dashboard) */
+  leozbxmeta: path.join(DATA_DIR, 'leozbxmeta.json')
 };
 
 function readCollection(name) {
@@ -35,6 +37,10 @@ function writeCollection(name, data) {
   fs.writeFileSync(tmp, JSON.stringify(data));
   fs.renameSync(tmp, FILES[name]);
 }
+
+const zabbix    = require('./zabbix');
+const ZBX_TOKEN = zabbix.loadToken(DATA_DIR);
+const store     = { read: readCollection, write: writeCollection };
 
 function send(res, status, body) {
   const json = JSON.stringify(body);
@@ -65,6 +71,16 @@ function readBody(req) {
 const server = http.createServer((req, res) => {
   const url   = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean); // ['api','cases']
+
+  /* Zabbix webhook: POST /api/zabbix/webhook with the shared token (header X-Portal-Token or ?token=) */
+  if (url.pathname === '/api/zabbix/webhook') {
+    if (req.method !== 'POST') { send(res, 405, { error: 'Use POST' }); return; }
+    if (!zabbix.sameSecret(req.headers['x-portal-token'] || url.searchParams.get('token'), ZBX_TOKEN)) { send(res, 401, { error: 'Invalid token' }); return; }
+    readBody(req).then((body) => send(res, 200, zabbix.handle(body, store)))
+      .catch((e) => send(res, 400, { error: e.message }));
+    return;
+  }
+
 
   if (parts[0] !== 'api' || !Object.prototype.hasOwnProperty.call(FILES, parts[1]) || parts.length !== 2) {
     send(res, 404, { error: 'Not found' });

@@ -70,7 +70,8 @@ var PAGE_ROUTES = {
                       title: function() { return 'Case #' + activeId; } },
   'pg-rma':         { path: 'rmas',                    title: 'RMAs' },
   'pg-lambdas':     { path: 'lambdas',                 title: 'Lambdas' },
-  'pg-alm':         { path: 'almoxarifado',            title: 'Almoxarifado' }
+  'pg-alm':         { path: 'almoxarifado',            title: 'Almoxarifado' },
+  'pg-leo-dash':    { path: 'amazon-leo/dashboard',    title: 'Dashboard Amazon Leo' }
 };
 
 var ROUTE_OPENERS = {
@@ -84,7 +85,8 @@ var ROUTE_OPENERS = {
   'amazon-leo/timeline/new': function() { showPage('pg-tl-new'); },
   'rmas':                    function() { openRMA(); },
   'lambdas':                 function() { openLambdas(); },
-  'almoxarifado':            function() { openAlm(); }
+  'almoxarifado':            function() { openAlm(); },
+  'amazon-leo/dashboard':    function() { openLeoDash(); }
 };
 
 var routeSilent = false;   /* true while the router itself is opening a page */
