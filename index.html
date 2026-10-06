@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="assets/css/rma.css"/>
   <link rel="stylesheet" href="assets/css/lambdas.css"/>
   <link rel="stylesheet" href="assets/css/alm.css"/>
+  <link rel="stylesheet" href="assets/css/leo-dash.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magic.css@latest/magic.min.css"/>
 </head>
@@ -258,7 +259,7 @@
           </svg>
         </div>
         <div class="act-name">Dashboard</div>
-        <div class="act-desc">Status page dos sites SLZ501 e CPV501 — a mesma visão que o cliente recebe</div>
+        <div class="act-desc">SLA, incidentes e status dos circuitos SLZ501 e CPV501 em tempo real</div>
         <div class="act-arrow">Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
       </a>
       <a class="act-card" data-reveal style="--d:.06s" href="#/amazon-leo/rfo">
@@ -530,7 +531,7 @@
 
 
 <!-- ══════════════════════════════════════════
-     AMAZON LEO — CLIENT STATUS PAGE (iframe of /leo/, also shared with the client)
+     AMAZON LEO — DWDM DASHBOARD (English: shown to the client)
 ══════════════════════════════════════════ -->
 <div id="pg-leo-dash" class="page">
   <div class="sub-topbar">
@@ -539,10 +540,16 @@
       Amazon Leo
     </button>
     <span class="sep">/</span><span class="crumb">Dashboard</span>
-    <a class="leo-ext" href="leo/" target="_blank" rel="noopener">Abrir link do cliente
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
   </div>
-  <iframe id="leo-frame" src="" title="Amazon Leo network status" style="width:100%;height:calc(100vh - 52px - 44px);border:none;display:block;background:#04060d;"></iframe>
+  <div class="ldb-bar"><div class="ldb-bar-in">
+    <div class="ldb-brand"><b>Amazon <span>Leo</span></b><em>DWDM circuits · Tely</em></div>
+    <div class="ldb-seg" id="ldb-site"><button data-v="SLZ501" onclick="ldbSet('site', this.dataset.v)">SLZ501 · Ocara-CE</button><button data-v="CPV501" onclick="ldbSet('site', this.dataset.v)">CPV501 · Sanharó-PE</button><button data-v="ALL" onclick="ldbSet('site', this.dataset.v)">Both sites</button></div>
+    <div class="ldb-seg" id="ldb-range"><button data-v="1" onclick="ldbSet('range', this.dataset.v)">24h</button><button data-v="7" onclick="ldbSet('range', this.dataset.v)">7d</button><button data-v="30" onclick="ldbSet('range', this.dataset.v)">30d</button><button data-v="90" onclick="ldbSet('range', this.dataset.v)">90d</button></div>
+    <div class="ldb-seg" id="ldb-tz"><button data-v="UTC" onclick="ldbSet('tz', this.dataset.v)">UTC</button><button data-v="BRT" onclick="ldbSet('tz', this.dataset.v)">BRT</button></div>
+    <div class="ldb-updated" id="ldb-updated"></div>
+  </div></div>
+  <div class="ldb-body" id="ldb-body"></div>
+  <div class="footer-credit">Operated by <strong>Tely</strong> &mdash; Network Engineering (Transmission)</div>
 </div>
 
 
@@ -713,6 +720,7 @@
 <script src="assets/js/osa.js"></script>
 <script src="assets/js/lambdas.js"></script>
 <script src="assets/js/alm.js"></script>
+<script src="assets/js/leo-dash.js"></script>
 <script src="assets/js/home.js"></script>
 <script src="assets/js/notifications.js"></script>
 <script src="assets/js/app.js"></script>

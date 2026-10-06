@@ -1,0 +1,129 @@
+/* ═══════════════════
+   AMAZON LEO — DWDM dashboard
+   flat panels, portal tokens; status colors from the fixed status palette
+   (good #0ca30c / warning #fab219 / critical #d03b3b), always with icon + label
+   ═══════════════════ */
+#pg-leo-dash { --st-up: #0ca30c; --st-warn: #fab219; --st-down: #d03b3b; --st-none: #8e8e93; --leo: #6d28d9; }
+
+/* ── toolbar ── */
+.ldb-bar {
+  position: sticky; top: 52px; z-index: 5; background: var(--white); border-bottom: 1px solid var(--border);
+}
+.ldb-bar-in { max-width: 1320px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ldb-brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.ldb-brand b { font-size: 18px; font-weight: 700; letter-spacing: -.3px; color: var(--text); }
+.ldb-brand b span { color: var(--leo); }
+.ldb-brand em { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.ldb-seg { display: inline-flex; background: #ececf1; border-radius: 9px; padding: 3px; gap: 2px; }
+.ldb-seg button {
+  border: none; background: transparent; cursor: pointer; color: var(--muted);
+  font: 500 12.5px 'Inter', system-ui, sans-serif; padding: 6px 11px; border-radius: 7px; white-space: nowrap;
+}
+.ldb-seg button:hover { color: var(--text); }
+.ldb-seg button.sel { background: var(--white); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.ldb-updated { width: 100%; font-size: 11.5px; color: var(--light); font-variant-numeric: tabular-nums; margin-top: -4px; }
+
+/* ── body ── */
+.ldb-body { max-width: 1320px; margin: 0 auto; padding: 24px 24px 60px; }
+.ldb-site + .ldb-site { margin-top: 36px; }
+.ldb-site-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ldb-site-head h3 { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+.ldb-site-head h3 span { font-weight: 500; color: var(--muted); }
+.ldb-site-sum { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.ldb-site-sum i { width: 8px; height: 8px; border-radius: 50%; background: var(--st-none); }
+.ldb-site-sum.up i { background: var(--st-up); } .ldb-site-sum.warn i { background: var(--st-warn); } .ldb-site-sum.down i { background: var(--st-down); }
+
+/* circuit panel */
+.ldb-c { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.ldb-c + .ldb-c { margin-top: 14px; }
+.ldb-c-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 18px; border-bottom: 1px solid var(--border); border-left: 4px solid var(--leo);
+}
+.ldb-c-kicker { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--light); }
+.ldb-c-title { font-size: 14.5px; font-weight: 600; color: var(--text); margin-top: 1px; }
+.ldb-c-title span { color: var(--light); margin: 0 4px; }
+.ldb-c-head code { font: 600 12.5px ui-monospace, 'SF Mono', Consolas, monospace; color: var(--muted); background: #f5f5f7; padding: 4px 8px; border-radius: 6px; }
+
+/* availability timeline */
+.ldb-tl { position: relative; height: 6px; margin: 14px 18px 0; border-radius: 3px; background: var(--st-up); overflow: hidden; }
+.ldb-tl .pre { position: absolute; left: 0; top: 0; bottom: 0; background: #dcdce2; }
+.ldb-tl i { position: absolute; top: 0; bottom: 0; background: var(--st-down); }
+.ldb-c.nodata .ldb-tl { background: #dcdce2; }
+.ldb-tl-axis { display: flex; justify-content: space-between; margin: 4px 18px 0; font-size: 10.5px; color: var(--light); }
+
+.ldb-c-body { display: grid; grid-template-columns: 220px minmax(0, 1fr) 220px; gap: 16px; padding: 14px 18px 18px; align-items: stretch; }
+
+/* SLA + Rx */
+.ldb-left { display: flex; flex-direction: column; gap: 10px; }
+.ldb-sla { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+.ldb-sla-k { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: var(--muted); }
+.ldb-sla-v { font-size: 40px; font-weight: 700; letter-spacing: -1.5px; color: var(--text); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ldb-sla-v small { font-size: 20px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.ldb-sla-v.low { color: var(--st-down); }
+.ldb-sla-v.none { color: var(--light); }
+.ldb-sla-l { font-size: 11.5px; color: var(--muted); }
+.ldb-sla-d { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+.ldb-sla-d b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ldb-rx { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; }
+.ldb-rx span { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+.ldb-rx b { font-size: 20px; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+.ldb-rx b small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.ldb-spark { grid-column: 1 / -1; width: 100%; height: 24px; }
+.ldb-spark polyline { fill: none; stroke: var(--blue); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.ldb-rx em { grid-column: 1 / -1; font-style: normal; font-size: 10.5px; color: var(--light); }
+
+/* incidents table */
+.ldb-table { border: 1px solid var(--border); border-radius: 10px; overflow: auto; max-height: 300px; min-height: 180px; }
+.ldb-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ldb-table thead th {
+  position: sticky; top: 0; background: #f5f5f7; text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--muted); padding: 8px 12px; white-space: nowrap;
+}
+.ldb-table td { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.ldb-table tbody tr:nth-child(even) td { background: #fafafc; }
+.ldb-table tr.on td { background: rgba(208, 59, 59, .05); }
+.ldb-prob { width: 100%; }
+.ldb-num { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted) !important; }
+.ldb-num b { color: var(--st-down); }
+.ldb-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.ldb-tag.ok { color: #087a08; background: rgba(12, 163, 12, .1); }
+.ldb-tag.down { color: #fff; background: var(--st-down); }
+.ldb-tag.warn { color: #5c3d00; background: var(--st-warn); }
+.ldb-none { text-align: center; color: var(--light) !important; padding: 40px 12px !important; }
+
+/* big status panel */
+.ldb-status {
+  border-radius: 10px; padding: 18px; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  color: #fff; background: var(--st-none);
+}
+.ldb-status.up { background: var(--st-up); }
+.ldb-status.warn { background: var(--st-warn); color: #3d2900; }
+.ldb-status.down { background: var(--st-down); }
+.ldb-st-ic { width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, .22); display: grid; place-items: center; }
+.ldb-st-ic svg { width: 18px; height: 18px; }
+.ldb-status b { font-size: 20px; font-weight: 700; letter-spacing: -.3px; line-height: 1.15; }
+.ldb-status em { font-style: normal; font-size: 12.5px; opacity: .85; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1100px) {
+  .ldb-c-body { grid-template-columns: 200px minmax(0, 1fr); }
+  .ldb-status { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+  .ldb-status em { margin-left: auto; }
+}
+@media (max-width: 700px) {
+  .ldb-c-body { grid-template-columns: minmax(0, 1fr); }
+  .ldb-bar-in, .ldb-body { padding-left: 16px; padding-right: 16px; }
+  .ldb-bar { position: static; }
+  .ldb-num:last-child { display: none; }
+}
+
+/* dark theme */
+[data-theme="dark"] .ldb-seg { background: #2c2c2e; }
+[data-theme="dark"] .ldb-seg button.sel { background: #3a3a3c; }
+[data-theme="dark"] .ldb-c-head code { background: #2c2c2e; }
+[data-theme="dark"] .ldb-tl .pre, [data-theme="dark"] .ldb-c.nodata .ldb-tl { background: #3a3a3c; }
+[data-theme="dark"] .ldb-table thead th { background: #232325; }
+[data-theme="dark"] .ldb-table tbody tr:nth-child(even) td { background: #1f1f21; }
+[data-theme="dark"] .ldb-tag.ok { color: #4ade80; }
+[data-theme="dark"] .ldb-brand b span { color: #a78bfa; }
+[data-theme="dark"] .ldb-c-head { border-left-color: #a78bfa; }

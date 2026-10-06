@@ -24,7 +24,8 @@ const FILES = {
   itens:     path.join(DATA_DIR, 'itens.json'),      /* almoxarifado catalog */
   itensmeta: path.join(DATA_DIR, 'itensmeta.json'),
   leoalarms:  path.join(DATA_DIR, 'leoalarms.json'),     /* Zabbix events (Amazon Leo dashboard) */
-  leozbxmeta: path.join(DATA_DIR, 'leozbxmeta.json')
+  leozbxmeta: path.join(DATA_DIR, 'leozbxmeta.json'),
+  leometrics: path.join(DATA_DIR, 'leometrics.json')     /* optical Rx per circuit */
 };
 
 function readCollection(name) {
@@ -76,6 +77,14 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/leo/status') {
     if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
     send(res, 200, zabbix.publicStatus(store));
+    return;
+  }
+
+  if (url.pathname === '/api/zabbix/metric') {
+    if (req.method !== 'POST') { send(res, 405, { error: 'Use POST' }); return; }
+    if (!zabbix.sameSecret(req.headers['x-portal-token'] || url.searchParams.get('token'), ZBX_TOKEN)) { send(res, 401, { error: 'Invalid token' }); return; }
+    readBody(req).then((body) => send(res, 200, zabbix.metric(body, store)))
+      .catch((e) => send(res, 400, { error: e.message }));
     return;
   }
 

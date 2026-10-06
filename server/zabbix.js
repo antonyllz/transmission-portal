@@ -116,28 +116,52 @@ function handle(body, store) {
   return { ok: true, eventId: rec.eventId, status: rec.status, site: rec.site, circuit: rec.circuit };
 }
 
-/* Client-facing view (GET /api/leo/status, no token): only Amazon Leo circuits, no hosts,
-   IPs or trigger text. Severity High+ = outage, Warning/Average = degradation,
-   Information / Not classified are internal noise and left out. */
+/* Dashboard feed (GET /api/leo/status): Amazon Leo events only — no host names, IPs,
+   tags or operational data. Events tied only to a site (no circuit id) count for both
+   circuits of that site. Severity High+ = outage, Warning/Average = degradation;
+   Information / Not classified are left out. */
 const CIRCUIT_IDS = Object.keys(CIRCUITS);
 function publicStatus(store) {
   const meta = store.read('leozbxmeta')[0] || null;
   const since = Date.now() - 90 * 86400000;
   const events = store.read('leoalarms')
-    .filter((a) => a.circuit && CIRCUIT_IDS.indexOf(a.circuit) >= 0 && a.severity >= 2)
+    .filter((a) => a.severity >= 2 && ((a.circuit && CIRCUIT_IDS.indexOf(a.circuit) >= 0) || (!a.circuit && SITES.indexOf(a.site) >= 0)))
     .filter((a) => a.status === 'problem' || new Date(a.end || a.start).getTime() >= since)
     .map((a) => ({
       id: crypto.createHash('sha1').update(String(a.eventId)).digest('hex').slice(0, 10),
-      circuit: a.circuit, site: CIRCUITS[a.circuit],
+      circuit: a.circuit || null, site: a.circuit ? CIRCUITS[a.circuit] : a.site,
+      problem: String(a.trigger || '').slice(0, 160),
       type: a.severity >= 4 ? 'outage' : 'degradation',
       status: a.status === 'problem' ? 'ongoing' : 'resolved',
       start: a.start, end: a.end || null
     }));
+  const metrics = store.read('leometrics').filter((m) => CIRCUIT_IDS.indexOf(m.circuit) >= 0);
   return {
     generatedAt: new Date().toISOString(),
     monitoringSince: meta ? (meta.firstReceivedAt || meta.lastReceivedAt) : null,
-    events
+    events, metrics
   };
 }
 
-module.exports = { loadToken, sameSecret, handle, publicStatus };
+/* Optical Rx power per circuit (POST /api/zabbix/metric, same token):
+   { circuit, rx_dbm, ts? } or { items: [ ... ] }. Keeps the latest value and 24 h of samples. */
+function metric(body, store) {
+  const items = Array.isArray(body && body.items) ? body.items : [body || {}];
+  const list = store.read('leometrics'), now = Date.now();
+  let n = 0;
+  items.forEach((it) => {
+    const c = CIRCUIT_IDS.find((x) => flat(x) === flat(it.circuit));
+    const v = parseFloat(it.rx_dbm != null ? it.rx_dbm : it.value);
+    if (!c || !isFinite(v)) return;
+    const at = toISO(it.ts) || new Date().toISOString();
+    let m = list.find((x) => x.circuit === c);
+    if (!m) { m = { circuit: c, history: [] }; list.push(m); }
+    m.rx = Math.round(v * 100) / 100; m.at = at;
+    m.history = (m.history || []).concat([[at, m.rx]]).filter((h) => now - new Date(h[0]).getTime() < 86400000).slice(-600);
+    n++;
+  });
+  store.write('leometrics', list);
+  return { ok: true, stored: n };
+}
+
+module.exports = { loadToken, sameSecret, handle, publicStatus, metric };
