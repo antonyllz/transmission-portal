@@ -79,3 +79,20 @@ Describe what you want to change and Claude Code will edit the right files direc
 
 ---
 Made by **Antony Araújo** — Network Engineering (Transmission)
+
+## Docker
+
+The whole portal (static site + data API) runs in one container, with no npm dependencies.
+
+```bash
+mkdir -p data                    # persistent data (JSON collections + Zabbix token)
+docker compose up -d --build     # http://<host>:5454
+docker compose logs -f
+```
+
+Data lives in `./data` (mounted at `/app/server/data`). To migrate from the current VPS, copy
+`server/data/` into `./data` before the first `up`; keeping `zabbix-token.txt` means the Zabbix
+media type only needs its `url` changed.
+
+Full documentation (architecture, API, Zabbix integration, Amazon Leo dashboard, deployment,
+backup): `docs/Transmission-Portal-Documentacao.pdf` (regenerate with `python docs/build_doc.py`).

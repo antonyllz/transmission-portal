@@ -1,2 +1,5 @@
 .DS_Store
 server/data/
+
+# docker volume (production data)
+data/

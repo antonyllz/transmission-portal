@@ -1,0 +1,8 @@
+.git
+.claude
+.DS_Store
+server/data
+data
+*.tgz
+*.bak*
+docs/*.py

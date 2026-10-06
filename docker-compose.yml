@@ -1,0 +1,13 @@
+services:
+  transmission-portal:
+    build: .
+    image: transmission-portal:latest
+    container_name: transmission-portal
+    restart: unless-stopped
+    ports:
+      - "5454:5454"            # host:container — change the left side to use another port
+    environment:
+      TZ: UTC
+      # ZBX_TOKEN: "set-a-long-random-token"   # optional; otherwise one is generated in the data volume
+    volumes:
+      - ./data:/app/server/data
