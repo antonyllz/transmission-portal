@@ -33,35 +33,55 @@ def table(rows, widths):
     ]))
     return t
 
-def footer(c, d):
+TIMBRADO = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'timbrado.png')
+ML, MR, MT, MB = 24 * mm, 20 * mm, 50 * mm, 36 * mm   # keeps text inside the letterhead's white area
+
+def letterhead(c, d):
     c.saveState()
-    c.setFont('Helvetica', 7.5); c.setFillColor(colors.HexColor('#777777'))
-    c.drawString(18 * mm, 10 * mm, 'Transmission Portal — Documentação técnica')
-    c.drawRightString(A4[0] - 18 * mm, 10 * mm, 'Página %d' % d.page)
+    c.drawImage(TIMBRADO, 0, 0, width=A4[0], height=A4[1])
+    c.setFont('Helvetica', 7.5); c.setFillColor(colors.HexColor('#6b7280'))
+    y = MB - 9 * mm
+    c.drawString(ML, y, 'Transmission Portal \u2014 Documenta\u00e7\u00e3o t\u00e9cnica  \u00b7  Setor de Engenharia \u2014 Transmiss\u00e3o  \u00b7  Desenvolvido por Antony Ara\u00fajo')
+    c.drawRightString(A4[0] - MR, y, 'P\u00e1gina %d' % d.page)
+    c.setStrokeColor(colors.HexColor('#d1d5db')); c.setLineWidth(.5)
+    c.line(ML, y + 4 * mm, A4[0] - MR, y + 4 * mm)
     c.restoreState()
 
-W = A4[0] - 36 * mm
+W = A4[0] - ML - MR
 s = []
 
-# ── Capa simples ──
-s += [Spacer(1, 40 * mm),
-      Paragraph('Transmission Portal', ParagraphStyle('T', fontName='Helvetica-Bold', fontSize=24, leading=28)),
-      Spacer(1, 4), Paragraph('Documentação técnica e guia de implantação', ParagraphStyle('S', fontName='Helvetica', fontSize=13, textColor=colors.HexColor('#444444'))),
-      Spacer(1, 18),
-      p('Network Engineering — Transmission · Tely'),
-      p('Autor: Antony Araújo · Versão: outubro/2026'),
-      p('Repositório: github.com/antonyllz/transmission-portal (branch main)'),
-      Spacer(1, 16),
+# ── Capa ──
+BLUE = colors.HexColor('#2b4ea2')
+s += [Spacer(1, 18 * mm),
+      Paragraph('DOCUMENTA\u00c7\u00c3O T\u00c9CNICA', ParagraphStyle('K', fontName='Helvetica-Bold', fontSize=9, textColor=BLUE, leading=12)),
+      Spacer(1, 4),
+      Paragraph('Transmission Portal', ParagraphStyle('T', fontName='Helvetica-Bold', fontSize=26, leading=30)),
+      Spacer(1, 4),
+      Paragraph('Funcionamento, integra\u00e7\u00f5es e guia de implanta\u00e7\u00e3o', ParagraphStyle('S', fontName='Helvetica', fontSize=13, leading=17, textColor=colors.HexColor('#444444'))),
+      Spacer(1, 14),
+      p('Portal interno do <b>Setor de Engenharia \u2014 Transmiss\u00e3o</b> da Tely, que concentra as ferramentas de opera\u00e7\u00e3o '
+        'da rede de transmiss\u00e3o \u00f3ptica: acompanhamento de demandas e RMAs, documenta\u00e7\u00e3o dos lambdas da rede DWDM, '
+        'cat\u00e1logo do almoxarifado, gera\u00e7\u00e3o de LOA e RFO e o monitoramento dos circuitos da Amazon Leo integrado ao Zabbix.'),
+      Spacer(1, 10),
+      table([['Item', 'Informa\u00e7\u00e3o'],
+             ['Sistema', 'Transmission Portal'],
+             ['Empresa', 'Tely \u2014 Internet de Fibra'],
+             ['Setor respons\u00e1vel', 'Engenharia \u2014 Transmiss\u00e3o (Network Engineering \u2014 Transmission)'],
+             ['Desenvolvido por', 'Antony Ara\u00fajo \u2014 Engenharia de Transmiss\u00e3o'],
+             ['Documento', 'Documenta\u00e7\u00e3o t\u00e9cnica e guia de implanta\u00e7\u00e3o'],
+             ['Vers\u00e3o / data', '1.0 \u2014 outubro de 2026'],
+             ['Reposit\u00f3rio', 'github.com/antonyllz/transmission-portal (branch main)'],
+             ['Classifica\u00e7\u00e3o', 'Uso interno']],
+            [45 * mm, W - 45 * mm]),
+      Spacer(1, 12),
       p('<b>Conteúdo</b>'),
-      *li(['1. Visão geral', '2. Arquitetura', '3. Estrutura de arquivos', '4. Dados e API',
-           '5. Páginas e funcionalidades', '6. Integração com o Zabbix', '7. Dashboard Amazon Leo',
-           '8. Instalação com Docker', '9. Migração da VPS atual', '10. Operação e manutenção',
-           '11. Segurança e observações']),
+      (lambda t: (t.setStyle(TableStyle([('LEFTPADDING', (0, 0), (-1, -1), 0), ('TOPPADDING', (0, 0), (-1, -1), 1), ('BOTTOMPADDING', (0, 0), (-1, -1), 1)])), t)[1])(
+          Table([[Paragraph(c, TC) for c in r] for r in [['1. Visão geral', '7. Dashboard Amazon Leo'], ['2. Arquitetura', '8. Instalação com Docker'], ['3. Estrutura de arquivos', '9. Migração da VPS atual'], ['4. Dados e API', '10. Operação e manutenção'], ['5. Páginas e funcionalidades', '11. Segurança e observações'], ['6. Integração com o Zabbix', '12. Responsabilidade e contato']]], colWidths=[W / 2, W / 2])),
       PageBreak()]
 
 # ── 1 ──
 s += [CondPageBreak(60 * mm), Paragraph('1. Visão geral', H1),
-      p('O Transmission Portal é o portal interno do time de Network Engineering — Transmission. Reúne ferramentas do '
+      p('O Transmission Portal é o portal interno do Setor de Engenharia — Transmissão (Network Engineering — Transmission) da Tely, desenvolvido por Antony Araújo. Reúne ferramentas do '
         'dia a dia: quadro de demandas, controle de RMAs, mapa DWDM com os lambdas em uso, catálogo do almoxarifado, '
         'geradores de LOA e RFO, timeline de casos e a dashboard dos circuitos da Amazon Leo alimentada pelo Zabbix.'),
       p('É uma aplicação web leve: front-end em HTML/CSS/JavaScript puro e um back-end em Node.js <b>sem nenhuma '
@@ -265,7 +285,17 @@ s += [CondPageBreak(60 * mm), Paragraph('11. Segurança e observações', H1),
            'Escritas simultâneas na mesma coleção: vale a última (uso adequado para um time pequeno).',
            'Os navegadores dos usuários precisam de internet para carregar fontes, mapa (OpenStreetMap) e bibliotecas via CDN.'])]
 
-doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
-                        title='Transmission Portal — Documentação técnica', author='Antony Araújo')
-doc.build(s, onFirstPage=lambda c, d: None, onLaterPages=footer)
+s += [CondPageBreak(60 * mm), Paragraph('12. Responsabilidade e contato', H1),
+      table([['Item', 'Informa\u00e7\u00e3o'],
+             ['Setor respons\u00e1vel', 'Engenharia \u2014 Transmiss\u00e3o'],
+             ['Desenvolvimento e manuten\u00e7\u00e3o', 'Antony Ara\u00fajo'],
+             ['C\u00f3digo-fonte', 'github.com/antonyllz/transmission-portal'],
+             ['Altera\u00e7\u00f5es', 'Toda altera\u00e7\u00e3o deve ser versionada no reposit\u00f3rio (commit + push) antes de ser publicada no servidor.']],
+            [55 * mm, W - 55 * mm]),
+      Spacer(1, 8),
+      p('D\u00favidas, ajustes ou novas funcionalidades devem ser tratados com o Setor de Engenharia \u2014 Transmiss\u00e3o.')]
+
+doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=ML, rightMargin=MR, topMargin=MT, bottomMargin=MB,
+                        title='Transmission Portal — Documentação técnica', author='Antony Araújo', subject='Setor de Engenharia — Transmissão — Tely')
+doc.build(s, onFirstPage=letterhead, onLaterPages=letterhead)
 print(OUT)
