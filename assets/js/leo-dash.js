@@ -11,7 +11,7 @@ var LDB_SITES = {
 };
 var LDB_CIRCUITS = [
   { id: 'RJOOCR964161',    site: 'SLZ501', pop: 'Equinix RJ2' },
-  { id: 'SPOOCR964174',    site: 'SLZ501', pop: 'Equinix RJ2' },
+  { id: 'SPOOCR964174',    site: 'SLZ501', pop: 'Equinix SP4' },
   { id: '21-90090-252671', site: 'CPV501', pop: 'Equinix SP4' },
   { id: '21-90090-252668', site: 'CPV501', pop: 'Equinix RJ2' }
 ];
@@ -155,8 +155,7 @@ function ldbCircuit(c, s) {
 
   return '<article class="ldb-c ' + s.st + '">'
     + '<header class="ldb-c-head">'
-    +   '<div><div class="ldb-c-kicker">Circuit</div><div class="ldb-c-title">' + c.site + ' — ' + LDB_SITES[c.site].place + ' <span>↔</span> ' + c.pop + '</div></div>'
-    +   '<code>' + c.id + '</code>'
+    +   '<div><div class="ldb-c-kicker">Circuit</div><div class="ldb-c-title">' + c.site + ' — ' + LDB_SITES[c.site].place + ' <span>↔</span> ' + c.pop + '<code>' + c.id + '</code></div></div>'
     + '</header>'
     + '<div class="ldb-tl" title="Outages in the selected period"><span class="pre" style="width:' + (pre * 100).toFixed(2) + '%"></span>' + segs + '</div>'
     + '<div class="ldb-tl-axis"><span>' + LDB_RANGES[ldb.range].replace('Last ', '') + ' ago</span><span>Now</span></div>'

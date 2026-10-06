@@ -43,7 +43,8 @@
 .ldb-c-kicker { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--light); }
 .ldb-c-title { font-size: 14.5px; font-weight: 600; color: var(--text); margin-top: 1px; }
 .ldb-c-title span { color: var(--light); margin: 0 4px; }
-.ldb-c-head code { font: 600 12.5px ui-monospace, 'SF Mono', Consolas, monospace; color: var(--muted); background: #f5f5f7; padding: 4px 8px; border-radius: 6px; }
+.ldb-c-title code { margin-left: 10px; vertical-align: 1px;
+  font: 600 12.5px ui-monospace, 'SF Mono', Consolas, monospace; color: var(--blue); background: #f0f4ff; padding: 3px 8px; border-radius: 6px; }
 
 /* availability timeline */
 .ldb-tl { position: relative; height: 6px; margin: 14px 18px 0; border-radius: 3px; background: var(--st-up); overflow: hidden; }
@@ -120,7 +121,7 @@
 /* dark theme */
 [data-theme="dark"] .ldb-seg { background: #2c2c2e; }
 [data-theme="dark"] .ldb-seg button.sel { background: #3a3a3c; }
-[data-theme="dark"] .ldb-c-head code { background: #2c2c2e; }
+[data-theme="dark"] .ldb-c-title code { background: rgba(6,73,252,.18); color: #8fb0ff; }
 [data-theme="dark"] .ldb-tl .pre, [data-theme="dark"] .ldb-c.nodata .ldb-tl { background: #3a3a3c; }
 [data-theme="dark"] .ldb-table thead th { background: #232325; }
 [data-theme="dark"] .ldb-table tbody tr:nth-child(even) td { background: #1f1f21; }

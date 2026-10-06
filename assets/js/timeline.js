@@ -5,7 +5,7 @@
 var CIRCUITS = {
   SLZ501: [
     { id: 'RJOOCR964161',   label: 'RJOOCR964161 \u2014 Equinix RJ2 x Ocara' },
-    { id: 'SPOOCR964174',   label: 'SPOOCR964174 \u2014 Equinix RJ2 x Ocara' }
+    { id: 'SPOOCR964174',   label: 'SPOOCR964174 \u2014 Equinix SP4 x Ocara' }
   ],
   CPV501: [
     { id: '21-90090-252671', label: '21-90090-252671 \u2014 Equinix SP4 x Sanhar\u00f3' },
