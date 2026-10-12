@@ -4,7 +4,7 @@
    Returns the Zabbix alarm affecting the circuit at that moment (active, or
    ended in the 2 h before) as RSS items: title = segment ("A x B"),
    description = ready-to-send English message. No alarm → one item
-   "No active alarm". Token: env FEED_TOKEN or server/data/feed-token.txt.
+   "No events on the route". Token: env FEED_TOKEN or server/data/feed-token.txt.
    ═══════════════════════════════════════ */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
@@ -50,7 +50,10 @@ const TPL = {
     'Circuit {cid} was impacted by a disruption on the segment {seg} between {since} and {until}. The segment is now restored and the service is stable. We will send the RFO with further details.'
   ],
   none: [
-    'Our monitoring systems did not identify any active alarm on our network affecting circuit {cid} at this time. Our team is investigating and will update you shortly.'
+    'We have not identified any events along the route of circuit {cid}. Our team will start a more detailed analysis and will update you shortly.',
+    'No events were identified along the route of circuit {cid}. We are starting a more detailed investigation and will keep you informed.',
+    'Our initial checks did not identify any events along the route of circuit {cid}. A more in-depth analysis is now under way and we will share the results as soon as possible.',
+    'At this time, no events have been detected along the route of circuit {cid}. Our team will proceed with a detailed analysis and will provide an update shortly.'
   ]
 };
 function pick(list, seed) { return list[crypto.createHash('md5').update(seed).digest()[0] % list.length]; }
@@ -78,7 +81,7 @@ function feed(q, store) {
     const sg = segment(a.trigger), on = a.status === 'problem' || !a.end || Date.parse(a.end) > at;
     const msg = fill(pick(TPL[on ? 'ongoing' : 'resolved'], a.eventId + circuit), { seg: sg.text, cid: circuit, since: utc(a.start), until: a.end ? utc(a.end) : '' });
     return { title: sg.codes, desc: msg, date: a.start, guid: 'leo-' + crypto.createHash('sha1').update(String(a.eventId)).digest('hex').slice(0, 12) };
-  }) : [{ title: 'No active alarm', desc: fill(TPL.none[0], { cid: circuit }), date: new Date(at).toISOString(), guid: 'none-' + circuit + '-' + Math.floor(at / 60000) }];
+  }) : [{ title: 'No events on the route', desc: fill(pick(TPL.none, circuit + Math.floor(at / 60000)), { cid: circuit }), date: new Date(at).toISOString(), guid: 'none-' + circuit + '-' + Math.floor(at / 60000) }];
   return '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
     + '<title>Amazon Leo ' + x(circuit) + '</title><link>http://transmission-portal/</link><description>Segment in alarm for ' + x(circuit) + '</description>'
     + items.map((i) => '<item><title>' + x(i.title) + '</title><description>' + x(i.desc) + '</description><pubDate>' + new Date(i.date).toUTCString() + '</pubDate><guid isPermaLink="false">' + i.guid + '</guid></item>').join('')
