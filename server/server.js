@@ -42,6 +42,8 @@ function writeCollection(name, data) {
 const zabbix    = require('./zabbix');
 const ZBX_TOKEN = zabbix.loadToken(DATA_DIR);
 const store     = { read: readCollection, write: writeCollection };
+const leofeed    = require('./leofeed');
+const FEED_TOKEN = leofeed.loadFeedToken(DATA_DIR);
 
 function send(res, status, body) {
   const json = JSON.stringify(body);
@@ -72,6 +74,17 @@ function readBody(req) {
 const server = http.createServer((req, res) => {
   const url   = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean); // ['api','cases']
+
+  /* RSS for Power Automate (standard RSS connector): segment in alarm per circuit */
+  if (url.pathname === '/api/leo/feed') {
+    if (!zabbix.sameSecret(url.searchParams.get('token'), FEED_TOKEN)) { send(res, 401, { error: 'Invalid token' }); return; }
+    try {
+      const xml = leofeed.feed(Object.fromEntries(url.searchParams), store);
+      res.writeHead(200, { 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(xml);
+    } catch (e) { send(res, 400, { error: e.message }); }
+    return;
+  }
 
   /* public, sanitized status for the Amazon Leo client page */
   if (url.pathname === '/api/leo/status') {
