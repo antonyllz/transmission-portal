@@ -13,7 +13,7 @@ const CIRCUITS = { RJOOCR964161: 'SLZ501', SPOOCR964174: 'SLZ501', '21-90090-252
 const LOOKBACK = 2 * 3600e3;
 
 /* site names come from the DWDM map (assets/js/network-data.js) + a few extras */
-const EXTRA = { 'PE-SNH-A01': ['Sanharó', 'PE'] };
+const EXTRA = { 'PE-SNH-A01': ['Sanharó', 'PE'], 'PE-BJM-A01': ['Belo Jardim', 'PE'], 'PE-VUS-A01': ['Venturosa', 'PE'] };
 let CITY = null;
 function cities() {
   if (CITY) return CITY;
