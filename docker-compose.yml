@@ -9,5 +9,6 @@ services:
     environment:
       TZ: UTC
       # ZBX_TOKEN: "set-a-long-random-token"   # optional; otherwise one is generated in the data volume
+      # NMS_TOKEN: "..."   # Padtec NMS API token for the Amazon Leo Rx; or put it in ./data/nms-token.txt
     volumes:
       - ./data:/app/server/data

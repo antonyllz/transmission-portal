@@ -143,7 +143,7 @@ function publicStatus(store) {
   };
 }
 
-/* Optical Rx power per circuit (POST /api/zabbix/metric, same token):
+/* Optical Rx power per circuit (NMS collector in nms.js, or POST /api/zabbix/metric, same token):
    { circuit, rx_dbm, ts? } or { items: [ ... ] }. Keeps the latest value and 24 h of samples. */
 function metric(body, store) {
   const items = Array.isArray(body && body.items) ? body.items : [body || {}];
@@ -157,7 +157,7 @@ function metric(body, store) {
     let m = list.find((x) => x.circuit === c);
     if (!m) { m = { circuit: c, history: [] }; list.push(m); }
     m.rx = Math.round(v * 100) / 100; m.at = at;
-    m.history = (m.history || []).concat([[at, m.rx]]).filter((h) => now - new Date(h[0]).getTime() < 86400000).slice(-600);
+    m.history = (m.history || []).concat([[at, m.rx]]).filter((h) => now - new Date(h[0]).getTime() < 86400000).slice(-1500);
     n++;
   });
   store.write('leometrics', list);

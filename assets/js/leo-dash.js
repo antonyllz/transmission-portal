@@ -142,7 +142,7 @@ function ldbCircuit(c, s) {
       + '<div class="ldb-sla-d">Downtime <b>' + (sla.downMin < 60 ? sla.downMin + ' min' : Math.floor(sla.downMin / 60) + 'h ' + sla.downMin % 60 + 'm') + '</b></div>'
     : '<div class="ldb-sla-v none">—</div><div class="ldb-sla-l">' + LDB_RANGES[ldb.range] + '</div>';
 
-  var rxHtml = m ? '<div class="ldb-rx"><span>Rx signal</span><b>' + m.rx.toFixed(2) + '<small> dBm</small></b>' + ldbSpark(m.history) + '<em>' + ldbFmt(m.at) + '</em></div>' : '';
+  var rxHtml = m ? '<div class="ldb-rx" title="Optical input power (Pin) on the transponder client port facing Amazon Leo"><span>Rx power</span><b>' + m.rx.toFixed(2) + '<small> dBm</small></b>' + ldbSpark(m.history) + '<em>' + ldbFmt(m.at) + '</em></div>' : '';
 
   var rows = evs.length ? evs.slice(0, 200).map(function(e) {
     var on = e.status === 'ongoing';

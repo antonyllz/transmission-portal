@@ -136,4 +136,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('transmission-portal API listening on 127.0.0.1:' + PORT);
+  require('./nms').start(DATA_DIR, (body) => zabbix.metric(body, store));   /* Amazon Leo Rx from the NMS */
 });
