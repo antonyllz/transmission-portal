@@ -86,6 +86,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/leo/rx') {
+    if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
+    try { send(res, 200, zabbix.rxHistory(Object.fromEntries(url.searchParams), store)); }
+    catch (e) { send(res, 400, { error: e.message }); }
+    return;
+  }
+
   /* public, sanitized status for the Amazon Leo client page */
   if (url.pathname === '/api/leo/status') {
     if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }

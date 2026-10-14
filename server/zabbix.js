@@ -135,7 +135,8 @@ function publicStatus(store) {
       status: a.status === 'problem' ? 'ongoing' : 'resolved',
       start: a.start, end: a.end || null
     }));
-  const metrics = store.read('leometrics').filter((m) => CIRCUIT_IDS.indexOf(m.circuit) >= 0);
+  const metrics = store.read('leometrics').filter((m) => CIRCUIT_IDS.indexOf(m.circuit) >= 0)
+    .map((m) => ({ circuit: m.circuit, rx: m.rx === undefined ? null : m.rx, loss: !!m.loss, at: m.at }));   /* history via /api/leo/rx */
   return {
     generatedAt: new Date().toISOString(),
     monitoringSince: meta ? (meta.firstReceivedAt || meta.lastReceivedAt) : null,
@@ -144,7 +145,9 @@ function publicStatus(store) {
 }
 
 /* Optical Rx power per circuit (NMS collector in nms.js, or POST /api/zabbix/metric, same token):
-   { circuit, rx_dbm, ts? } or { items: [ ... ] }. Keeps the latest value and 24 h of samples. */
+   { circuit, rx_dbm, ts?, loss? } or { items: [ ... ] }. loss = port without signal (rx null).
+   Keeps the latest value and RX_DAYS of history: one sample per RX_STEP, plus every loss/recovery change. */
+const RX_DAYS = 30, RX_STEP = 5 * 60000;
 function metric(body, store) {
   const items = Array.isArray(body && body.items) ? body.items : [body || {}];
   const list = store.read('leometrics'), now = Date.now();
@@ -152,16 +155,30 @@ function metric(body, store) {
   items.forEach((it) => {
     const c = CIRCUIT_IDS.find((x) => flat(x) === flat(it.circuit));
     const v = parseFloat(it.rx_dbm != null ? it.rx_dbm : it.value);
-    if (!c || !isFinite(v)) return;
+    const loss = !!it.loss || !isFinite(v);
+    if (!c || (!isFinite(v) && !it.loss)) return;
     const at = toISO(it.ts) || new Date().toISOString();
     let m = list.find((x) => x.circuit === c);
     if (!m) { m = { circuit: c, history: [] }; list.push(m); }
-    m.rx = Math.round(v * 100) / 100; m.at = at;
-    m.history = (m.history || []).concat([[at, m.rx]]).filter((h) => now - new Date(h[0]).getTime() < 86400000).slice(-1500);
+    const rx = loss ? null : Math.round(v * 100) / 100;
+    const h = m.history || [], last = h[h.length - 1];
+    if (!last || (last[1] === null) !== loss || new Date(at) - new Date(last[0]) >= RX_STEP) h.push([at, rx]);
+    m.rx = rx; m.loss = loss; m.at = at;
+    m.history = h.filter((x) => now - new Date(x[0]).getTime() < RX_DAYS * 86400000);
     n++;
   });
   store.write('leometrics', list);
   return { ok: true, stored: n };
 }
 
-module.exports = { loadToken, sameSecret, handle, publicStatus, metric };
+/* Rx history for the dashboard chart: GET /api/leo/rx?circuit=<id>&days=<1..30> */
+function rxHistory(q, store) {
+  const c = CIRCUIT_IDS.find((x) => flat(x) === flat(q.circuit));
+  if (!c) throw new Error('unknown circuit');
+  const days = Math.min(RX_DAYS, Math.max(1, parseInt(q.days, 10) || 1)), from = Date.now() - days * 86400000;
+  const m = store.read('leometrics').find((x) => x.circuit === c) || { history: [] };
+  return { circuit: c, days, rx: m.rx === undefined ? null : m.rx, loss: !!m.loss, at: m.at || null,
+           points: (m.history || []).filter((x) => new Date(x[0]).getTime() >= from) };
+}
+
+module.exports = { loadToken, sameSecret, handle, publicStatus, metric, rxHistory };

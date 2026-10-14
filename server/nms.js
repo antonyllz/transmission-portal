@@ -2,7 +2,8 @@
    AMAZON LEO — Rx power collector (Padtec NMS API)
    Every NMS_INTERVAL s, reads the transponders that face the Amazon Leo
    equipment and stores the "Pin (Port N)" of each circuit through
-   zabbix.metric() (latest value + 24 h history → dashboard Rx panel).
+   zabbix.metric() (latest value + 30-day history → dashboard Rx panel).
+   Empty value, value <= LOSS_DBM or card not up → Loss.
    Token: env NMS_TOKEN or server/data/nms-token.txt (not versioned).
    No token → collector stays off.
    ═══════════════════════════════════════ */
@@ -12,6 +13,7 @@ const fs = require('fs'), path = require('path'), http = require('http'), https 
 const BASE     = process.env.NMS_URL || 'http://187.33.233.106:8181';
 const INTERVAL = Math.max(30, parseInt(process.env.NMS_INTERVAL, 10) || 120) * 1000;
 const NMS_TZ   = process.env.NMS_TZ || '-03:00';   /* NMS timestamps are local time (BRT) */
+const LOSS_DBM = -35;
 
 /* transponder card → { measureName: circuit } */
 const CARDS = {
@@ -51,9 +53,10 @@ async function collect(token, metric) {
     const url = BASE + '/nms-api/v1/measures/state?cardFamily=transponder&cardIsUp=true&cardUid=' + encodeURIComponent(card) + '&page=0&size=300';
     const list = await getJSON(url, token);
     const rows = Array.isArray(list) ? list : (list && list.content) || [];
-    rows.forEach((r) => {
-      const circuit = CARDS[card][r.measureName];
-      if (circuit && r.measureValue != null && r.measureValue !== '') items.push({ circuit, rx_dbm: r.measureValue, ts: stamp(r.updatedAt) });
+    Object.keys(CARDS[card]).forEach((name) => {
+      const r = rows.find((x) => x.measureName === name), v = r ? parseFloat(r.measureValue) : NaN;
+      const circuit = CARDS[card][name], ts = r ? stamp(r.updatedAt) : undefined;
+      items.push(isFinite(v) && v > LOSS_DBM ? { circuit, rx_dbm: v, ts } : { circuit, loss: true, ts });
     });
   }
   return metric({ items });
