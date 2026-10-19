@@ -225,7 +225,7 @@
 
 <div class="hero">
   <h1>RFO Amazon Leo</h1>
-  <p>Preencha os campos e exporte o relatório em PDF</p>
+  <p>Preencha os campos e exporte o relatório em PDF ou copie para o corpo do e-mail</p>
 </div>
 
 <div class="container">
@@ -334,6 +334,10 @@ Best regards,</textarea>
     <button class="btn btn-ghost" onclick="clearForm()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
       Limpar
+    </button>
+    <button class="btn btn-ghost" onclick="copyRFO()" title="Copia a RFO formatada para colar no corpo do e-mail">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copiar RFO
     </button>
     <button class="btn btn-primary" onclick="generatePDF()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v13M5 9l7 7 7-7"/><path d="M3 20h18"/></svg>
@@ -448,17 +452,80 @@ Best regards,</textarea>
     return `${d}-${m}-${y} ${timeStr} UTC-3`;
   }
 
-  function generatePDF() {
+  function validateForm() {
     clearErrors();
     let err = false;
-
     ['ticketId','amazonLeoTicket','siteName','circuitId','cause','eventLocation','solution'].forEach(id => {
       if (!v(id)) { markError(id); err = true; }
     });
     ['startDate','startTime','endDate','endTime'].forEach(id => {
       if (!v(id)) { document.getElementById(id).classList.add('error'); err = true; }
     });
-    if (err) { showToast('Preencha todos os campos obrigatórios.', 'error-msg'); return; }
+    if (err) showToast('Preencha todos os campos obrigatórios.', 'error-msg');
+    return !err;
+  }
+
+  /* ── RFO in the e-mail body: copies formatted HTML (Outlook keeps the table) + plain text ── */
+  function escHTML(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\r?\n/g, '<br>');
+  }
+  function copyRFO() {
+    if (!validateForm()) return;
+    const rows = [
+      ['Customer',          'Amazon Leo'],
+      ['Ticket ID',         v('ticketId')],
+      ['Amazon Leo Ticket', v('amazonLeoTicket')],
+      ['Circuit ID',        v('circuitId')],
+      ['Site Name',         v('siteName')],
+      ['Incident Duration', fmtDuration(v('startDate'), v('startTime')) + ' to ' + fmtDuration(v('endDate'), v('endTime'))],
+      ['Cause',             v('cause')],
+      ['Event Location',    v('eventLocation')],
+      ['Solution',          v('solution')],
+    ];
+    const P = 'margin:0 0 10px;';
+    const html = '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1e1e1e;">'
+      + '<p style="' + P + '">Hello Amazon Leo Team,</p>'
+      + '<p style="' + P + '">Please find below the RFO for this case.</p>'
+      + '<p style="margin:16px 0 8px;font-size:14pt;font-weight:bold;color:#1a3a6e;">RFO (Reason for Outage) Report</p>'
+      + '<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:640px;max-width:100%;font-family:Calibri,Arial,sans-serif;font-size:11pt;">'
+      + rows.map((r, i) =>
+          '<tr><td style="width:160px;padding:7px 10px;border:1px solid #d2dceb;background:' + (i < 5 ? '#f5f8ff' : '#eef3fb') + ';font-weight:bold;color:#284682;vertical-align:top;">' + r[0] + '</td>'
+          + '<td style="padding:7px 10px;border:1px solid #d2dceb;color:#1e1e1e;vertical-align:top;">' + escHTML(r[1]) + '</td></tr>').join('')
+      + '</table>'
+      + '<p style="margin:16px 0 10px;">Please do not hesitate to contact us should you require any further information.</p>'
+      + '<p style="' + P + '">Best regards,</p>'
+      + '</div>';
+    const text = 'Hello Amazon Leo Team,\n\nPlease find below the RFO for this case.\n\nRFO (Reason for Outage) Report\n\n'
+      + rows.map(r => r[0] + ': ' + r[1]).join('\n')
+      + '\n\nPlease do not hesitate to contact us should you require any further information.\n\nBest regards,';
+
+    const done = () => showToast('✓ RFO copiada — cole no corpo do e-mail');
+    /* the portal runs on plain HTTP, where navigator.clipboard is unavailable: copy a rendered selection instead */
+    function selectionCopy() {
+      const box = document.createElement('div');
+      box.contentEditable = 'true';
+      box.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      box.innerHTML = html;
+      document.body.appendChild(box);
+      const range = document.createRange(); range.selectNodeContents(box);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      sel.removeAllRanges(); box.remove();
+      ok ? done() : showToast('Não foi possível copiar', 'error-msg');
+    }
+    if (window.isSecureContext && navigator.clipboard && window.ClipboardItem) {
+      navigator.clipboard.write([new ClipboardItem({
+        'text/html':  new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([text], { type: 'text/plain' })
+      })]).then(done).catch(selectionCopy);
+    } else {
+      selectionCopy();
+    }
+  }
+
+  function generatePDF() {
+    if (!validateForm()) return;
 
     const ticketId       = v('ticketId');
     const amazonLeoTicket = v('amazonLeoTicket');
