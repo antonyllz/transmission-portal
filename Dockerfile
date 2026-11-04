@@ -1,8 +1,19 @@
-# Transmission Portal — single container: static site + data API (no npm dependencies)
+# Transmission Portal — single container: static site + data API
+# Stage 1 builds the React islands (dock, network events, demands) into assets/react/;
+# the runtime stage stays dependency-free (plain Node servers).
+FROM node:22-alpine AS build
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json vite.config.mts components.json ./
+COPY src ./src
+RUN npm run build
+
 FROM node:22-alpine
 
 WORKDIR /app
 COPY . .
+COPY --from=build /src/assets/react ./assets/react
 
 ENV PUBLIC_PORT=5454 \
     API_PORT=5455 \

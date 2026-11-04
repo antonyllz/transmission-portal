@@ -34,9 +34,55 @@ transmission-portal/
     └── index.html              # RFO Generator (standalone page, loaded in iframe)
 ```
 
+## React islands (dock, network events, demands)
+
+Three parts of the portal are React + TypeScript + Tailwind v4 (shadcn structure);
+everything else stays plain HTML/CSS/JS. Each one mounts into a placeholder in `index.html`:
+
+| Island | Placeholder | What it is |
+|---|---|---|
+| Floating dock | `#dock-root` | Main navigation fixed at the bottom (RMAs, Lambdas, LOA, RFO, Almoxarifado, Amazon Leo, Starlink) |
+| Network events | `#events-root` | Home dashboard: active network events + Padtec alarms |
+| Demands | `#demands-root` | Demands as a row of notepads (hover, open, comment, finish) |
+
+```
+src/
+├── main.tsx                          # mounts each island into its placeholder
+├── portal.css                        # Tailwind (no global preflight, utilities only for src/) + notepad paper
+├── components/
+│   ├── ui/floating-dock.tsx          # Aceternity FloatingDock, adapted to the portal theme
+│   ├── ui/notepad.tsx                # notepad object (layers, 3D hover, fanning sheets)
+│   ├── portal-dock.tsx               # dock items (hash routes) + active route
+│   ├── network-events.tsx            # events dashboard
+│   └── demands-board.tsx             # demands board (uses the notepad)
+├── data/network-events.ts            # ⚠ events/alarms data source — SIMULATED for now
+├── lib/demands-store.ts              # bridge to the existing demands data (database.js → /api/demands)
+├── lib/utils.ts                      # cn()
+└── hooks/use-now.ts                  # live clock + duration formatting
+```
+
+**Network events data:** `fetchNetworkSnapshot()` in `src/data/network-events.ts` returns mock data
+(Campina Grande-PB and São Paulo-SP down, Padtec `SPVL-HB CGE-A01` unavailable) and the screen shows
+a "Dados simulados" badge. When the collection exists, replace that function with the API call
+returning the same shape (`events`, `padtecAlarms`, `updatedAt`, `simulated: false`).
+
+**Demands:** the notepads read and write the same data as before (`dmdGetAll`/`dmdSave` in
+`assets/js/database.js`, synced to `/api/demands` and polled every 8s); only the rendering moved to React.
+
+Vite builds everything into `assets/react/portal.js` + `portal.css`, which `index.html` loads.
+`assets/react/` is a build output (git-ignored): **run the build before serving the site**.
+
+```bash
+npm ci
+npm run build     # one-off build
+npm run dev       # rebuild on every change in src/
+```
+
+To add or change a dock item, edit `NAV` in `src/components/portal-dock.tsx` (icons from `@tabler/icons-react`).
+
 ## Running locally
 
-You need a local server — browsers block `file://` cross-origin requests for JS modules.
+Build the dock first (`npm ci && npm run build`), then you need a local server — browsers block `file://` cross-origin requests for JS modules.
 
 **Option 1 — VS Code Live Server**
 Install the "Live Server" extension, right-click `index.html` → "Open with Live Server".
@@ -55,10 +101,10 @@ npx serve .
 
 ## Adding a new client
 
-1. Add a card in `index.html` inside `.clients-grid`
-2. Add a new page `<div id="pg-CLIENTNAME" class="page">` in `index.html`
-3. Add the client banner image in `assets/images/`
-4. If the client needs new tools, create a new JS file in `assets/js/` and include it
+1. Add a new page `<div id="pg-CLIENTNAME" class="page">` in `index.html`
+2. Add the client banner image in `assets/images/`
+3. If the client needs new tools, create a new JS file in `assets/js/` and include it
+4. Add the client to the dock (`NAV` in `src/components/portal-dock.tsx`) and rebuild
 
 ## Data storage
 
@@ -66,7 +112,7 @@ Cases and demands are stored server-side (`server/`) so every user sees the same
 
 Running the frontend without the API (e.g. `python3 -m http.server`) still works — it just falls back to the local-only cache, same as before.
 
-In production the API runs under PM2 on the VPS, proxied by nginx at `/api/` on the same port as the site (see `server/server.js`).
+In production the API runs under PM2 on the VPS, proxied by nginx at `/api/` on the same port as the site (see `server/server.js`). When deploying with PM2, run `npm ci && npm run build` after each `git pull` so `assets/react/` exists.
 
 ## Claude Code usage
 
@@ -82,7 +128,8 @@ Made by **Antony Araújo** — Network Engineering (Transmission)
 
 ## Docker
 
-The whole portal (static site + data API) runs in one container, with no npm dependencies.
+The whole portal (static site + data API) runs in one container. The image builds the dock in a
+build stage (`npm ci && npm run build`); the runtime stage has no npm dependencies.
 
 ```bash
 mkdir -p data                    # persistent data (JSON collections + Zabbix token)

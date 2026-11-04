@@ -1,0 +1,154 @@
+/* Tailwind for the React islands only.
+   - No preflight: the portal keeps its own reset (assets/css/base.css).
+   - Utilities are emitted UNLAYERED and only for classes found in src/,
+     so the portal's unlayered `* { margin:0; padding:0 }` can't override them
+     and no utility leaks onto the existing HTML. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" source(none);
+@source "./";
+
+/* dark: follows the portal theme switch (<html data-theme="dark">) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-tely-blue: #0649fc;
+  --color-tely-blue-light: #6b93ff;
+}
+
+/* minimal reset, scoped to the islands (we skip Tailwind's global preflight);
+   layered, so any utility class still wins over it */
+@layer base {
+  :where(#dock-root, #events-root, #demands-root) :where(button, input, textarea) {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    background: transparent;
+    border: 0 solid;
+    padding: 0;
+    margin: 0;
+  }
+  :where(#dock-root, #events-root, #demands-root) :where(*, ::before, ::after) {
+    border-width: 0;
+    border-style: solid;
+  }
+  :where(#dock-root, #events-root, #demands-root) :where(ul) { list-style: none; }
+}
+
+/* ── the dock floats over every page (desktop: vertical, left edge) ──
+   only on mobile, where it's a round button bottom-left, the pages
+   keep some room at the bottom so it doesn't sit on the last line */
+:root { --dock-space: 0px; }
+@media (max-width: 767px) { :root { --dock-space: 72px; } }
+
+body { padding-bottom: var(--dock-space); }
+.lmb-layout { height: calc(100vh - 52px - 44px - var(--dock-space)) !important; }
+#rfo-frame,
+#loa-frame,
+#rfo-generic-frame { height: calc(100vh - 52px - 44px - var(--dock-space)) !important; }
+
+/* ═══ Notepads (demands board) — paper, in both themes ═══ */
+.np-board {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, .07);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .05);
+}
+.np-top   { background: #fffdf8; }
+.np-sheet { background: #f6f2e8; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.np-text  { color: #1d1d1f; }
+.np-hole  { background: rgba(255, 255, 255, .75); box-shadow: inset 0 1px 1px rgba(0, 0, 0, .25); }
+.np-blank { border-color: rgba(6, 73, 252, .28); background: rgba(6, 73, 252, .03); transition: background .25s, border-color .25s; }
+.group:hover .np-blank, .group:focus-visible .np-blank { background: rgba(6, 73, 252, .07); border-color: rgba(6, 73, 252, .55); }
+/* ruled lines start under the binding strip and match the 22px line-height */
+.np-ruled {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 21px, rgba(6, 73, 252, .08) 21px 22px);
+  background-position: 0 53px;
+}
+/* the corner curling up on hover */
+.np-curl {
+  background: linear-gradient(315deg, transparent 50%, #e9e3d4 50%, #fbf8f0 75%);
+  border-top-left-radius: 6px;
+  box-shadow: -2px -2px 5px rgba(0, 0, 0, .10);
+}
+
+[data-theme="dark"] .np-board { background: #1c1c1e; border-color: rgba(255, 255, 255, .08); box-shadow: none; }
+[data-theme="dark"] .np-top   { background: #2c2c2e; }
+[data-theme="dark"] .np-sheet { background: #232325; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); border: 1px solid rgba(255, 255, 255, .04); }
+[data-theme="dark"] .np-text  { color: #f5f5f7; }
+[data-theme="dark"] .np-hole  { background: rgba(0, 0, 0, .35); box-shadow: inset 0 1px 1px rgba(0, 0, 0, .5); }
+[data-theme="dark"] .np-blank { border-color: rgba(107, 147, 255, .3); background: rgba(107, 147, 255, .04); }
+[data-theme="dark"] .group:hover .np-blank,
+[data-theme="dark"] .group:focus-visible .np-blank { background: rgba(107, 147, 255, .1); border-color: rgba(107, 147, 255, .6); }
+[data-theme="dark"] .np-ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 21px, rgba(255, 255, 255, .05) 21px 22px); }
+[data-theme="dark"] .np-curl  { background: linear-gradient(315deg, transparent 50%, #3a3a3c 50%, #48484a 75%); box-shadow: -2px -2px 6px rgba(0, 0, 0, .4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .np-curl { transition: none; }
+}
+
+/* ═══ Dock icons — idle motion that says what each tool does; faster on hover ═══ */
+.di * { transform-box: fill-box; }
+.dock-img { transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+.dock-item:hover .dock-img, .dock-item:focus-visible .dock-img { transform: scale(1.12); }
+
+/* Home: smoke curls up from the chimney; the door swings open on hover */
+.di-smoke { opacity: 0; animation: di-smoke 3.2s ease-out infinite; }
+.di-smoke2 { animation-delay: 1.6s; }
+@keyframes di-smoke {
+  0% { opacity: 0; transform: translate(0, 1px) scale(.6); }
+  25% { opacity: .9; }
+  100% { opacity: 0; transform: translate(1.6px, -3.2px) scale(1.5); }
+}
+.di-door { transform-origin: 0% 100%; transition: transform .45s cubic-bezier(.3, .7, .3, 1); }
+.dock-item:hover .di-door, .dock-item:focus-visible .di-door { transform: scaleX(.35); }
+
+/* RMAs: the box hops and settles */
+.di-box { transform-origin: 50% 100%; animation: di-box 4s cubic-bezier(.3, .7, .3, 1) infinite; }
+.di-lid { transform-origin: 50% 0; animation: di-lid 4s ease-in-out infinite; }
+@keyframes di-box {
+  0%, 62%, 100% { transform: none; }
+  70% { transform: translateY(-3px) rotate(-7deg); }
+  78% { transform: translateY(0) rotate(4deg); }
+  85% { transform: rotate(-2deg); }
+  92% { transform: none; }
+}
+@keyframes di-lid { 0%, 64%, 100% { transform: none; } 70% { transform: translateY(-1.5px); } 78% { transform: none; } }
+
+/* Lambdas: light runs along the fibers, nodes blink in turn */
+.di-edge { stroke-dasharray: 3 3; animation: di-flow 1.4s linear infinite; }
+.di-node { transform-origin: 50% 50%; animation: di-node 2.7s ease-in-out infinite; }
+.di-n2 { animation-delay: .9s; }
+.di-n3 { animation-delay: 1.8s; }
+@keyframes di-flow { to { stroke-dashoffset: -12; } }
+@keyframes di-node { 0%, 60%, 100% { transform: none; } 20% { transform: scale(1.45); } }
+
+/* LOA / RFO: lines write themselves, the corner folds,
+   LOA gets signed and RFO traces the outage */
+.di-line { stroke-dasharray: 8; stroke-dashoffset: 8; animation: di-write 4.2s ease-in-out infinite; }
+.di-l2 { animation-delay: .35s; }
+.di-fold { transform-origin: 100% 0; animation: di-fold 4.2s ease-in-out infinite; }
+.di-sign, .di-trace { stroke-dasharray: 1; stroke-dashoffset: 1; animation: di-draw 4.2s ease-in-out .5s infinite; }
+@keyframes di-write { 0% { stroke-dashoffset: 8; } 25%, 75% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -8; } }
+@keyframes di-draw { 0%, 10% { stroke-dashoffset: 1; } 40%, 80% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
+@keyframes di-fold { 0%, 80%, 100% { transform: none; } 88% { transform: scale(.8); } }
+
+/* Almoxarifado: the roll-up door opens on a box, then closes */
+.di-slats { animation: di-door 4.4s cubic-bezier(.5, 0, .3, 1) infinite; }
+.di-crate { opacity: 0; transform-origin: 50% 100%; animation: di-crate 4.4s ease-in-out infinite; }
+@keyframes di-door { 0%, 15%, 85%, 100% { transform: translateY(0); } 35%, 65% { transform: translateY(-6.5px); } }
+@keyframes di-crate { 0%, 22%, 78%, 100% { opacity: 0; transform: scale(.6); } 38%, 62% { opacity: 1; transform: none; } }
+
+/* hover (and keyboard focus) plays everything faster */
+.dock-item:is(:hover, :focus-visible) :is(.di-box, .di-lid) { animation-duration: 1.4s; }
+.dock-item:is(:hover, :focus-visible) .di-edge { animation-duration: .5s; }
+.dock-item:is(:hover, :focus-visible) .di-node { animation-duration: 1s; }
+.dock-item:is(:hover, :focus-visible) :is(.di-line, .di-fold, .di-sign, .di-trace) { animation-duration: 1.8s; }
+.dock-item:is(:hover, :focus-visible) :is(.di-slats, .di-crate) { animation-duration: 2s; }
+.dock-item:is(:hover, :focus-visible) .di-smoke { animation-duration: 1.4s; }
+.dock-item:is(:hover, :focus-visible) .di-smoke2 { animation-delay: .7s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .di *, .dock-img { animation: none !important; transition: none !important; }
+  .di-line, .di-sign, .di-trace { stroke-dashoffset: 0; }
+  .di-crate { opacity: 0; }
+  .di-smoke { opacity: 0; }
+}

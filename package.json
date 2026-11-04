@@ -1,0 +1,29 @@
+{
+  "name": "transmission-portal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Transmission Portal — React islands (floating dock) built with Vite + Tailwind; the rest of the site is plain HTML/JS",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite build --watch --mode development",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.50.0",
+    "clsx": "^2.1.1",
+    "motion": "^14.9.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

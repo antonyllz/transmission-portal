@@ -6,3 +6,5 @@ data
 *.tgz
 *.bak*
 docs/*.py
+node_modules
+assets/react

@@ -20,7 +20,9 @@ function showPage(id) {
 }
 
 function animateClientCards() {
-  var cards = document.querySelectorAll('.clients-grid .client-card');
+  var grid = document.querySelector('.clients-grid');
+  if (!grid) return;   /* clients moved to the floating dock */
+  var cards = grid.querySelectorAll('.client-card');
   cards.forEach(function(card) {
     card.classList.remove('vanishIn');
   });

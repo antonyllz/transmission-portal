@@ -3,3 +3,7 @@ server/data/
 
 # docker volume (production data)
 data/
+
+# build output / deps (React islands — run `npm run build`)
+node_modules/
+assets/react/
