@@ -124,8 +124,9 @@ function eventsResponse(store) {
     a: e.a || null, b: e.b || null, key: e.key || null,
     iface: e.iface || null, speed: e.speed || null, role: e.role || null
   }; };
-  /* events without host or trigger (e.g. a Zabbix 'Test' kept from before) can't be shown */
-  const all = store.read('netalarms').filter((e) => e.host || e.hostName || e.trigger);
+  /* segment alarms come from a router: events without a host (Zabbix 'Test' runs, manual webhook tests
+     kept from before the split) aren't segments */
+  const all = store.read('netalarms').filter((e) => e.host || e.hostName);
   return {
     generatedAt: new Date().toISOString(),
     receivingSince: meta ? meta.firstReceivedAt : null,

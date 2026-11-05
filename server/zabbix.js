@@ -94,6 +94,8 @@ function handle(body, store) {
   const update = String(b.event_update || '0') === '1';
   const m = match(ev);
   const isLeo = !!(m.site || m.circuit);
+  /* a real segment alarm always comes from a router (host); manual/webhook tests without one are dropped */
+  if (!isLeo && !ev.host && !ev.hostName) return { ok: true, ignored: 'segment event without host (test?)' };
   const extra = isLeo ? m : net.parseSegment(ev);
 
   /* the collection this event belongs to; a recovery/update follows the problem
