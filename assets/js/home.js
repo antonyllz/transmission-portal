@@ -39,20 +39,27 @@ function HeroNet(canvasId, opts) {
     return { pts: pts, d: d, len: d[d.length - 1] || 1 };
   }
 
-  /* A made-up landmass: radius modulated by a few seeded harmonics gives an irregular
-     coast with bays and a peninsula — reads as "a map" without being any real one. */
+  /* A made-up landmass: a few low harmonics give the overall shape (plus a peninsula,
+     a gulf and a cape); build() then roughens that outline into a fractal coast by
+     midpoint displacement along the contour — bays, capes and a jagged shoreline like
+     a real map, without being any real place. */
   var land = null;
   function makeLand(rand, wide) {
-    var h = [2, 3, 4, 6, 9, 13].map(function(k, i) { return { k: k, a: [.2, .15, .1, .07, .045, .025][i] * (.8 + rand() * .4), p: rand() * 6.283 }; });
-    var cx = wide ? W * .73 : W * .5, cy = H * .52, R = wide ? Math.min(H * .56, W * .16) : Math.min(H * .5, W * .34);
+    var h = [];
+    for (var k = 2; k <= 7; k++) h.push({ k: k, a: .17 * Math.pow(k, -.6) * (.6 + rand() * .8), p: rand() * 6.283 });
+    /* sized to the hero: a wide, low banner gets a wide, low landmass */
+    var aspect = W / Math.max(1, H), sx = Math.max(1.55, Math.min(2.4, aspect / 3.4));
+    var cx = wide ? W * .72 : W * .5, cy = H * .5;
+    /* bigger than the banner: the map runs off its edges and the canvas mask dissolves it */
+    var R = wide ? Math.min(H * .78, W * .36 / sx) : Math.min(H * .7, W * .5 / sx);
     return {
-      cx: cx, cy: cy, R: R, sx: 1.55, sy: 1, rot: -.42,
+      cx: cx, cy: cy, R: R, sx: sx, sy: 1, rot: -.12,
       r: function(t) {
         var v = 1;
-        h.forEach(function(o) { v += o.a * Math.sin(o.k * t + o.p); });
+        for (var i = 0; i < h.length; i++) v += h[i].a * Math.sin(h[i].k * t + h[i].p);
         var g = function(c, wd) { var d = (((t - c) % 6.283) + 6.283) % 6.283 - 3.1416; return Math.exp(-Math.pow(3.1416 - Math.abs(d), 2) * wd); };
         v += .3 * g(.5, 9) - .26 * g(2.4, 14) + .18 * g(4.4, 7);   /* peninsula, gulf, cape */
-        return R * v;
+        return R * Math.max(.35, v);
       },
       /* 0 at the centre, 1 on the coast, >1 outside */
       q: function(x, y) {
@@ -67,19 +74,59 @@ function HeroNet(canvasId, opts) {
     };
   }
 
+  /* midpoint displacement: a hand-drawn, imperfect line between two points (rivers, borders) */
+  function jag(a, b, rough, depth, rand) {
+    var pts = [a, b];
+    for (var d = 0; d < depth; d++) {
+      var n = [pts[0]];
+      for (var i = 1; i < pts.length; i++) {
+        var p = pts[i - 1], q = pts[i], dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy) || 1, off = (rand() - .5) * len * rough;
+        n.push([(p[0] + q[0]) / 2 - dy / len * off, (p[1] + q[1]) / 2 + dx / len * off], q);
+      }
+      pts = n;
+    }
+    return pts;
+  }
+
+  /* the same displacement on a closed outline (each edge bent sideways, recursively) */
+  function roughen(poly, rough, depth, rand) {
+    var pts = poly;
+    for (var d = 0; d < depth; d++) {
+      var n = [];
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i], q = pts[(i + 1) % pts.length], dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy) || 1, off = (rand() - .5) * len * rough;
+        n.push(p, [(p[0] + q[0]) / 2 - dy / len * off, (p[1] + q[1]) / 2 + dx / len * off]);
+      }
+      pts = n;
+    }
+    pts.push(pts[0]);
+    return pts;
+  }
+  function inside(poly, x, y) {
+    var c = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var a = poly[i], b = poly[j];
+      if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+
   function build() {
     var wide = W > 760, rand = rng(1550);
     land = makeLand(rand, wide);
+    var base = [];
+    for (var bt = 0; bt < 6.2832 - .001; bt += 6.2832 / 48) base.push(land.at(bt));
+    land.coast = roughen(base, .42, 5, rand);
     layers = [
-      { depth: .45, alpha: .55, count: wide ? 34 : 18, nodes: [], edges: [] },
-      { depth: 1,   alpha: 1,   count: wide ? 40 : 22, nodes: [], edges: [] }
+      { depth: .45, alpha: .55, count: wide ? 30 : 14, nodes: [], edges: [] },
+      { depth: 1,   alpha: 1,   count: wide ? 38 : 18, nodes: [], edges: [] }
     ];
     layers.forEach(function(L, li) {
       /* dart throwing: random points inside the coast, kept apart by a minimum distance */
       var area = Math.PI * land.R * land.R * land.sx * land.sy, minD = Math.sqrt(area / L.count) * .62, tries = 0;
       while (L.nodes.length < L.count && tries++ < 6000) {
         var x = land.cx + (rand() * 2 - 1) * land.R * 1.5, y = land.cy + (rand() * 2 - 1) * land.R * 1.55;
-        if (land.q(x, y) > .96 - li * .04) continue;
+        if (land.q(x, y) > .92 - li * .04 || !inside(land.coast, x, y)) continue;
         if (L.nodes.some(function(n) { return Math.hypot(n.x - x, n.y - y) < minD; })) continue;
         L.nodes.push({ x: x, y: y, adj: [], glow: 0, core: rand() < .3, ph: rand() * 6.28 });
       }
@@ -90,7 +137,7 @@ function HeroNet(canvasId, opts) {
           .filter(function(o) { return o.j !== i && o.d < minD * 2.6; }).sort(function(a, b) { return a.d - b.d; });
         near.slice(0, rand() < .3 ? 3 : 2).forEach(function(o) {
           var m = L.nodes[o.j], k = Math.min(i, o.j) + '-' + Math.max(i, o.j);
-          if (seen[k] || land.q((n.x + m.x) / 2, (n.y + m.y) / 2) > 1) return;
+          if (seen[k] || !inside(land.coast, (n.x + m.x) / 2, (n.y + m.y) / 2)) return;
           seen[k] = true;
           var e = { a: i, b: o.j, c: curve(n, m, (rand() - .5) * .3) };
           L.edges.push(e);
@@ -98,15 +145,19 @@ function HeroNet(canvasId, opts) {
         });
       });
     });
-    /* coastline (and a faint inner contour) drawn as dotted lines */
-    land.coast = []; land.inner = [];
-    for (var t = 0; t <= 6.2832 + .001; t += .03) { land.coast.push(land.at(t)); land.inner.push(land.at(t, .72)); }
-    /* a few islands off the coast */
-    land.isles = [[.15, 1.28, .09], [.55, 1.24, .06], [3.6, 1.2, .07]].map(function(o) {
+    /* map lines: coastline + offshore contour, islands, rivers, state-like borders */
+    land.shelf = land.coast.map(function(p) { return [land.cx + (p[0] - land.cx) * 1.06, land.cy + (p[1] - land.cy) * 1.1]; });
+    land.isles = [[.15, 1.26, .08], [.62, 1.2, .045], [3.55, 1.18, .06], [5.3, 1.22, .035]].map(function(o) {
       var c = land.at(o[0], o[1]), r = land.R * o[2], pts = [];
-      for (var t2 = 0; t2 <= 6.2832 + .001; t2 += .35) pts.push([c[0] + Math.cos(t2) * r * (1 + .25 * Math.sin(3 * t2 + o[0])) * 1.4, c[1] + Math.sin(t2) * r * (1 + .25 * Math.sin(3 * t2 + o[0]))]);
-      return pts;
+      for (var t2 = 0; t2 < 6.2832 - .001; t2 += 6.2832 / 7) pts.push([c[0] + Math.cos(t2) * r * 1.6 * (.75 + rand() * .5), c[1] + Math.sin(t2) * r * (.75 + rand() * .5)]);
+      return roughen(pts, .45, 4, rand);
     });
+    land.rivers = [[.95, .3], [2.0, .42], [3.1, .38], [5.0, .5]].map(function(o) {
+      var main = jag(land.at(o[0], .99), land.at(o[0] + .35, o[1]), .55, 6, rand);
+      var fork = main[Math.floor(main.length * .55)];
+      return [main, jag(fork, land.at(o[0] + .7, o[1] + .1), .6, 5, rand)];
+    }).reduce(function(acc, r) { return acc.concat(r); }, []);
+    land.borders = [[1.3, 3.9], [4.6, 0.2], [2.7, 5.6]].map(function(o) { return jag(land.at(o[0], .995), land.at(o[1], .995), .3, 7, rand); });
   }
 
   /* opacity: fades towards the coast, the hero edges and (on wide screens) the text column */
@@ -200,16 +251,20 @@ function HeroNet(canvasId, opts) {
     layers.forEach(function(L) {
       ctx.save(); ctx.translate(px * 22 * L.depth, py * 14 * L.depth);
       ctx.lineWidth = L.depth < 1 ? .8 : 1; ctx.lineCap = 'round';
-      if (L.depth === 1 && land) {   /* coastline + inner contour, dotted, fading with the rest */
-        [[land.coast, .24, [1.5, 5]], [land.inner, .09, [1, 7]]].concat(land.isles.map(function(p) { return [p, .2, [1.5, 4]]; })).forEach(function(cl) {
-          ctx.setLineDash(cl[2]);
-          for (var j = 1; j < cl[0].length; j++) {
-            var p = cl[0][j - 1], p2 = cl[0][j];
-            ctx.strokeStyle = 'rgba(255,255,255,' + (cl[1] * Math.min(Math.min(1, p[0] / 60, (W - p[0]) / 90, p[1] / 40, (H - p[1]) / 40), W > 760 ? Math.min(1, Math.max(0, (p[0] - W * .4) / (W * .18))) : .6)) + ')';
-            ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
-          }
-        });
-        ctx.setLineDash([]);
+      if (L.depth === 1 && land) {   /* map lines (the canvas mask fades them out at the edges) */
+        var line = function(pts, style, w, dash) {
+          ctx.setLineDash(dash || []); ctx.strokeStyle = style; ctx.lineWidth = w; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+          for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+          ctx.stroke();
+        };
+        line(land.shelf, 'rgba(190,215,255,.08)', .8, [1, 4]);
+        line(land.coast, 'rgba(255,255,255,.07)', 3.2);
+        line(land.coast, 'rgba(255,255,255,.42)', 1);
+        land.isles.forEach(function(p) { line(p, 'rgba(255,255,255,.26)', .9); });
+        land.rivers.forEach(function(p) { line(p, 'rgba(170,215,255,.17)', .8); });
+        land.borders.forEach(function(p) { line(p, 'rgba(255,255,255,.12)', .8, [5, 3, 1.5, 3]); });
+        ctx.setLineDash([]); ctx.lineWidth = L.depth < 1 ? .8 : 1;
       }
       L.edges.forEach(function(e) {
         var m = e.c.pts[9];

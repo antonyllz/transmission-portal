@@ -6,12 +6,14 @@ import { createRoot } from "react-dom/client";
 import { PortalDock } from "@/components/portal-dock";
 import { NetworkEventsDashboard } from "@/components/network-events";
 import { DemandsBoard } from "@/components/demands-board";
+import { LocalitiesPage } from "@/components/localities-page";
 import "./portal.css";
 
 const ISLANDS: Record<string, ReactNode> = {
   "dock-root": <PortalDock />,
   "events-root": <NetworkEventsDashboard />,
   "demands-root": <DemandsBoard />,
+  "localities-root": <LocalitiesPage />,
 };
 
 for (const [id, node] of Object.entries(ISLANDS)) {

@@ -18,7 +18,7 @@
 /* minimal reset, scoped to the islands (we skip Tailwind's global preflight);
    layered, so any utility class still wins over it */
 @layer base {
-  :where(#dock-root, #events-root, #demands-root) :where(button, input, textarea) {
+  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(button, input, textarea, select) {
     font: inherit;
     color: inherit;
     letter-spacing: inherit;
@@ -27,11 +27,12 @@
     padding: 0;
     margin: 0;
   }
-  :where(#dock-root, #events-root, #demands-root) :where(*, ::before, ::after) {
+  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(*, ::before, ::after) {
     border-width: 0;
     border-style: solid;
   }
-  :where(#dock-root, #events-root, #demands-root) :where(ul) { list-style: none; }
+  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(ul) { list-style: none; }
+  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(a) { color: inherit; text-decoration: none; }
 }
 
 /* ── the dock floats over every page (desktop: vertical, left edge) ──

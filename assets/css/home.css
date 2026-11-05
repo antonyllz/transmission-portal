@@ -7,7 +7,7 @@
   background:
     radial-gradient(120% 140% at 85% 10%, #2a76ff 0%, rgba(26,107,255,0) 55%),
     linear-gradient(155deg, #081534 0%, #0a2f9e 48%, #0649fc 100%);
-  padding: 84px 0 76px;
+  padding: 40px 0 36px;
 }
 /* fine dot matrix — texture, not decoration */
 .home-hero::before {
@@ -21,7 +21,12 @@
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; pointer-events: none;
   background: linear-gradient(to bottom, rgba(6,73,252,0), rgba(6,40,160,.25));
 }
-.hero-net { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-net {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  /* the map dissolves towards its edges (and away from the text column) */
+  -webkit-mask-image: radial-gradient(ellipse 38% 90% at 70% 50%, #000 18%, rgba(0,0,0,.6) 50%, rgba(0,0,0,.18) 78%, transparent 100%);
+          mask-image: radial-gradient(ellipse 38% 90% at 70% 50%, #000 18%, rgba(0,0,0,.6) 50%, rgba(0,0,0,.18) 78%, transparent 100%);
+}
 .hero-inner { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 24px; pointer-events: none; }
 .hero-inner a, .hero-inner button { pointer-events: auto; }
 
@@ -38,12 +43,13 @@
 @keyframes live-ping { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
 
 .home-hero h1 {
-  font-size: clamp(34px, 5vw, 48px); font-weight: 700; color: #fff;
-  letter-spacing: -1.4px; line-height: 1.06; margin-bottom: 14px;
+  font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; color: #fff;
+  letter-spacing: -1px; line-height: 1.06; margin-bottom: 8px;
 }
 .hl { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 4px; margin-bottom: -4px; }
 .hl > span { display: inline-block; }
-.home-hero .hero-inner > p { font-size: 16px; color: rgba(255,255,255,.68); max-width: 420px; line-height: 1.5; }
+.home-hero .ey { margin-bottom: 12px; }
+.home-hero .hero-inner > p { font-size: 14px; color: rgba(255,255,255,.68); max-width: 420px; line-height: 1.5; }
 
 /* ── HERO ENTRANCE (runs each time home is shown) ── */
 .hero-in .ey, .hero-in .hero-inner > p, .hero-in .back-btn { animation: hero-rise .7s cubic-bezier(.2,.7,.2,1) both; }
@@ -94,9 +100,9 @@
 .topbar.scrolled { box-shadow: 0 8px 24px rgba(6,40,160,.28); }
 
 @media (max-width: 760px) {
-  .home-hero { padding: 56px 0 48px; }
+  .home-hero { padding: 30px 0 26px; }
   .hero-inner { padding: 0 16px; }
-  .hero-net { opacity: .3; }
+  .hero-net { opacity: .3; -webkit-mask-image: radial-gradient(ellipse 60% 80% at 50% 50%, #000 30%, transparent 100%); mask-image: radial-gradient(ellipse 60% 80% at 50% 50%, #000 30%, transparent 100%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-in .ey, .hero-in .hero-inner > p, .hero-in .hl > span, .hero-in .hero-net, .live-dot::after { animation: none; }
@@ -130,7 +136,7 @@
    DASHBOARD LAYOUT — network events on top, demand notepads below
    (both React islands; tools and clients live in the floating dock)
    ═══════════════════ */
-.home-grid { max-width: 1200px; padding-top: 44px; }
+.home-grid { max-width: 1200px; padding-top: 36px; }
 .home-block + .home-block { margin-top: 44px; }
 
 /* tool grid on the client pages (Amazon Leo, Starlink) */

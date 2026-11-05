@@ -1,63 +1,155 @@
 /* ═══════════════════════════════════════════════════════════════
    NETWORK EVENTS — data source of the home dashboard
    ───────────────────────────────────────────────────────────────
-   For now this returns SIMULATED data (flag `simulated: true`, shown
-   on screen as "Dados simulados"). When the real collection exists,
-   replace the body of `fetchNetworkSnapshot()` with the API call
-   (e.g. `fetch('/api/network/events')`) returning the same shape —
-   the dashboard doesn't need to change.
+   • Segments (trechos): REAL — Zabbix events that aren't Amazon Leo,
+     from GET /api/network/events (server/netevents.js). Both ends of
+     a link report the same segment, so events are grouped by it.
+   • Padtec alarms: REAL — GET /api/network/padtec (server/padtec.js reads
+     the NMS every minute and keeps "Via A/B" = energia, "Temperatura" and
+     "Tempo de resposta" alarms).
+   • Locality names: GET /api/network/localities (DWDM map + the
+     entries added on the "Localidades" page).
    ═══════════════════════════════════════════════════════════════ */
 
-export type EventStatus = "down" | "degraded";
-export type AlarmSeverity = "critical" | "major" | "minor";
+export type NodeRef = { uf: string; loc: string; key: string; site: string; device: string };
 
-/** An active event on a network site (from the future site/route collection). */
-export type NetworkEvent = {
+export type NetEvent = {
   id: string;
-  site: string;
-  uf: string;
-  status: EventStatus;
-  /** ISO timestamp of when the event started. */
-  since: string;
-  /** Where the event came from (collector name). */
-  source: string;
-  detail?: string;
+  host: string;
+  trigger: string;
+  severity: number;
+  severityName: string;
+  status: "active" | "resolved";
+  acknowledged: boolean;
+  start: string;
+  end: string | null;
+  a: NodeRef | null;
+  b: NodeRef | null;
+  /** "PE-AIN x PE-TIU" (sorted), or one end only when the far end isn't named */
+  key: string | null;
+  iface: string | null;
+  speed: string | null;
+  role: string | null;
 };
 
-/** An active alarm from the Padtec NMS. */
+/** A segment = all events of the same pair of localities. */
+export type Trecho = {
+  key: string;
+  a: NodeRef | null;
+  b: NodeRef | null;
+  events: NetEvent[];
+  since: string;
+  until: string | null;
+  acknowledged: boolean;
+};
+
+export type Locality = { key: string; uf: string; code: string; name: string; source: "map" | "manual" };
+export type UnknownLocality = { key: string; uf: string; code: string; count: number; lastSeen: string | null };
+export type LocalitiesData = { ufs: Record<string, string>; items: Locality[]; unknown: UnknownLocality[] };
+
+export type AlarmSeverity = "critical" | "major" | "minor" | "warning";
+export type PadtecCategory = "energia" | "temperatura" | "resposta";
 export type PadtecAlarm = {
   id: string;
-  /** Network element as shown in the NMS, e.g. "SPVL-HB CGE-A01". */
-  element: string;
-  /** Alarm text, e.g. "Indisponível". */
-  status: string;
+  name: string;
+  category: PadtecCategory;
   severity: AlarmSeverity;
-  since: string;
+  site: string;
+  card: string;
+  model: string;
+  family: string;
+  resource: string;
+  start: string | null;
+  acknowledged: boolean;
+  ackAt: string | null;
 };
+export type PadtecStatus = { configured: boolean; ok: boolean; error: string | null; updatedAt: string | null };
 
 export type NetworkSnapshot = {
-  events: NetworkEvent[];
+  trechos: Trecho[];
+  resolved: Trecho[];
   padtecAlarms: PadtecAlarm[];
+  padtec: PadtecStatus;
+  localities: Record<string, Locality>;
   updatedAt: string;
-  /** true while the data is mocked — the UI shows a badge. */
-  simulated: boolean;
+  lastReceivedAt: string | null;
+  receivingSince: string | null;
 };
 
-/* stable "started at" for the mock, so the durations keep counting during the session */
-const T0 = Date.now();
-const ago = (min: number) => new Date(T0 - min * 60000).toISOString();
+const SEV_RANK: Record<AlarmSeverity, number> = { critical: 0, major: 1, minor: 2, warning: 3 };
 
-const MOCK: Omit<NetworkSnapshot, "updatedAt"> = {
-  simulated: true,
-  events: [
-    { id: "ev-cge", site: "Campina Grande", uf: "PB", status: "down", since: ago(157), source: "Coleta a definir" },
-    { id: "ev-sp", site: "São Paulo", uf: "SP", status: "down", since: ago(48), source: "Coleta a definir" },
-  ],
-  padtecAlarms: [
-    { id: "pd-spvl", element: "SPVL-HB CGE-A01", status: "Indisponível", severity: "critical", since: ago(312) },
-  ],
-};
+async function getJSON<T>(url: string): Promise<T> {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  return r.json() as Promise<T>;
+}
+
+export function fetchLocalities() {
+  return getJSON<LocalitiesData>("/api/network/localities");
+}
+
+/* manual entries live in the plain "localities" collection (GET/PUT /api/localities) */
+export type ManualLocality = { uf: string; code: string; name: string };
+export function fetchManualLocalities() {
+  return getJSON<ManualLocality[]>("/api/localities");
+}
+export async function saveManualLocalities(list: ManualLocality[]) {
+  const r = await fetch("/api/localities", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(list),
+  });
+  if (!r.ok) throw new Error(`save failed: ${r.status}`);
+}
+
+function group(events: NetEvent[]): Trecho[] {
+  const map = new Map<string, Trecho>();
+  for (const e of events) {
+    const k = e.key ?? `event-${e.id}`;
+    let t = map.get(k);
+    if (!t) {
+      t = { key: k, a: e.a, b: e.b, events: [], since: e.start, until: e.end, acknowledged: true };
+      map.set(k, t);
+    }
+    t.events.push(e);
+    if (e.start < t.since) t.since = e.start;
+    if (e.end && (!t.until || e.end > t.until)) t.until = e.end;
+    if (!t.b && e.b) t.b = e.b;
+    t.acknowledged = t.acknowledged && e.acknowledged;
+  }
+  return [...map.values()];
+}
 
 export async function fetchNetworkSnapshot(): Promise<NetworkSnapshot> {
-  return { ...MOCK, updatedAt: new Date().toISOString() };
+  const [ev, loc, pd] = await Promise.all([
+    getJSON<{ active: NetEvent[]; resolved: NetEvent[]; lastReceivedAt: string | null; receivingSince: string | null }>(
+      "/api/network/events",
+    ),
+    fetchLocalities(),
+    getJSON<PadtecStatus & { alarms: PadtecAlarm[] }>("/api/network/padtec").catch(
+      (): PadtecStatus & { alarms: PadtecAlarm[] } => ({ configured: true, ok: false, error: "API indisponível", updatedAt: null, alarms: [] }),
+    ),
+  ]);
+  const activeKeys = new Set(group(ev.active).map((t) => t.key));
+  return {
+    trechos: group(ev.active).sort((x, y) => x.since.localeCompare(y.since)),
+    /* resolved segments that aren't still down through another link */
+    resolved: group(ev.resolved)
+      .filter((t) => !activeKeys.has(t.key))
+      .sort((x, y) => String(y.until).localeCompare(String(x.until))),
+    padtecAlarms: [...pd.alarms].sort(
+      (x, y) => SEV_RANK[x.severity] - SEV_RANK[y.severity] || String(y.start).localeCompare(String(x.start)),
+    ),
+    padtec: { configured: pd.configured, ok: pd.ok, error: pd.error, updatedAt: pd.updatedAt },
+    localities: Object.fromEntries(loc.items.map((l) => [l.key, l])),
+    updatedAt: new Date().toISOString(),
+    lastReceivedAt: ev.lastReceivedAt,
+    receivingSince: ev.receivingSince,
+  };
+}
+
+/** "Aliança" for PE-AIN, or the code itself when unknown. */
+export function placeName(n: NodeRef | null, locs: Record<string, Locality>) {
+  if (!n) return "—";
+  return locs[n.key]?.name ?? n.key;
 }

@@ -1,13 +1,17 @@
 /* ═══════════════════════════════════════
    ZABBIX WEBHOOK — receives problem / recovery events from a Zabbix
-   "Webhook" media type and keeps them in the "leoalarms" collection.
-   Events are matched to the Amazon Leo sites / circuits by searching
-   their ids in the host, trigger, operational data and tags.
+   "Webhook" media type. Events are matched to the Amazon Leo sites /
+   circuits by searching their ids in the host, trigger, operational data
+   and tags: those go to the "leoalarms" collection (Amazon Leo dashboard);
+   everything else is a route/segment event and goes to "netalarms"
+   (home "Eventos na rede"), with the segment parsed from the router names
+   (see netevents.js).
    ═══════════════════════════════════════ */
 'use strict';
 const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
+const net    = require('./netevents');
 
 const MAX_EVENTS = 3000;
 
@@ -87,33 +91,46 @@ function handle(body, store) {
   const value  = String(b.event_value != null ? b.event_value : b.value);   /* 1 = problem, 0 = recovery */
   const update = String(b.event_update || '0') === '1';
   const m = match(ev);
+  const isLeo = !!(m.site || m.circuit);
+  const extra = isLeo ? m : net.parseSegment(ev);
 
-  const list = store.read('leoalarms');
+  /* the collection this event belongs to; a recovery/update follows the problem
+     wherever it was stored (e.g. received before the split existed) */
+  let coll = isLeo ? 'leoalarms' : 'netalarms';
+  let list = store.read(coll);
   let rec = list.find((x) => x.eventId === ev.eventId);
+  if (!rec) {
+    const other = isLeo ? 'netalarms' : 'leoalarms';
+    const olist = store.read(other);
+    const orec = olist.find((x) => x.eventId === ev.eventId);
+    if (orec) { coll = other; list = olist; rec = orec; }
+  }
   const startISO = toISO(b.event_ts, b.event_date, b.event_time, offset) || now;
 
   if (value === '0') {                                   /* recovery */
     const endISO = toISO(b.recovery_ts, b.recovery_date, b.recovery_time, offset) || now;
-    if (!rec) { rec = Object.assign({}, ev, m, { status: 'problem', start: startISO }); list.push(rec); }
+    if (!rec) { rec = Object.assign({}, ev, extra, { status: 'problem', start: startISO }); list.push(rec); }
     rec.status = 'resolved'; rec.end = endISO;
   } else if (update && rec) {                            /* acknowledge / comment on an existing problem */
     rec.acknowledged = String(b.ack || '').toLowerCase() === 'yes' || rec.acknowledged || false;
     if (b.update_message) rec.note = String(b.update_message).slice(0, 500);
   } else {                                               /* new problem (or a repeat of one) */
-    if (!rec) { rec = Object.assign({}, ev, m, { status: 'problem', start: startISO }); list.push(rec); }
-    else Object.assign(rec, ev, m.site ? m : {}, { status: 'problem' });
+    if (!rec) { rec = Object.assign({}, ev, extra, { status: 'problem', start: startISO }); list.push(rec); }
+    else Object.assign(rec, ev, isLeo ? (m.site ? m : {}) : extra, { status: 'problem' });
   }
   rec.receivedAt = now;
 
   list.sort((a, c) => String(c.start).localeCompare(String(a.start)));
-  store.write('leoalarms', list.slice(0, MAX_EVENTS));
-  const meta = store.read('leozbxmeta')[0] || { received: 0 };
+  store.write(coll, list.slice(0, coll === 'netalarms' ? net.MAX_EVENTS : MAX_EVENTS));
+  const metaName = coll === 'netalarms' ? 'netzbxmeta' : 'leozbxmeta';
+  const meta = store.read(metaName)[0] || { received: 0 };
   meta.received = (meta.received || 0) + 1;
   meta.lastReceivedAt = now;
   if (!meta.firstReceivedAt) meta.firstReceivedAt = now;
   meta.lastHost = ev.host;
-  store.write('leozbxmeta', [meta]);
-  return { ok: true, eventId: rec.eventId, status: rec.status, site: rec.site, circuit: rec.circuit };
+  store.write(metaName, [meta]);
+  return { ok: true, eventId: rec.eventId, status: rec.status, target: coll === 'netalarms' ? 'trechos' : 'amazon-leo',
+           site: rec.site, circuit: rec.circuit, segment: rec.key || null };
 }
 
 /* Dashboard feed (GET /api/leo/status): Amazon Leo events only — no host names, IPs,
@@ -181,4 +198,19 @@ function rxHistory(q, store) {
            points: (m.history || []).filter((x) => new Date(x[0]).getTime() >= from) };
 }
 
-module.exports = { loadToken, sameSecret, handle, publicStatus, metric, rxHistory };
+/* One-off at startup: events stored in "leoalarms" before the split that don't belong
+   to Amazon Leo (no site / circuit) move to "netalarms", with their segment parsed. */
+function migrate(store) {
+  const leo = store.read('leoalarms');
+  const move = leo.filter((a) => !a.site && !a.circuit);
+  if (!move.length) return 0;
+  const netList = store.read('netalarms');
+  const have = new Set(netList.map((x) => x.eventId));
+  move.forEach((a) => { if (!have.has(a.eventId)) netList.push(Object.assign({}, a, net.parseSegment(a))); });
+  netList.sort((a, c) => String(c.start).localeCompare(String(a.start)));
+  store.write('netalarms', netList.slice(0, net.MAX_EVENTS));
+  store.write('leoalarms', leo.filter((a) => a.site || a.circuit));
+  return move.length;
+}
+
+module.exports = { loadToken, sameSecret, handle, publicStatus, metric, rxHistory, migrate };

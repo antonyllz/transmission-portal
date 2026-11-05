@@ -74,4 +74,4 @@ function start(dataDir, metric) {
   setInterval(run, INTERVAL).unref();
 }
 
-module.exports = { start, collect, CARDS };
+module.exports = { start, collect, CARDS, BASE, loadToken, getJSON, stamp };

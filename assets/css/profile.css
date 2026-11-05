@@ -150,6 +150,7 @@
 }
 [data-theme="dark"] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2358585d' stroke-width='1.5' fill='none'/%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
 }
 [data-theme="dark"] select:disabled { background-color: #222; color: #58585d; border-color: rgba(255,255,255,.06); }
 [data-theme="dark"] .nadd-textarea { background: #252527; color: #f0f0f2; border-color: rgba(255,255,255,.1); }

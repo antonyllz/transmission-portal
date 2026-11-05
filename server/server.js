@@ -25,7 +25,12 @@ const FILES = {
   itensmeta: path.join(DATA_DIR, 'itensmeta.json'),
   leoalarms:  path.join(DATA_DIR, 'leoalarms.json'),     /* Zabbix events (Amazon Leo dashboard) */
   leozbxmeta: path.join(DATA_DIR, 'leozbxmeta.json'),
-  leometrics: path.join(DATA_DIR, 'leometrics.json')     /* optical Rx per circuit */
+  leometrics: path.join(DATA_DIR, 'leometrics.json'),    /* optical Rx per circuit */
+  netalarms:  path.join(DATA_DIR, 'netalarms.json'),     /* Zabbix route/segment events (home "Eventos na rede") */
+  netzbxmeta: path.join(DATA_DIR, 'netzbxmeta.json'),
+  localities: path.join(DATA_DIR, 'localities.json'),    /* locality codes added in the portal (UF + Anatel code → name) */
+  padtecalarms: path.join(DATA_DIR, 'padtecalarms.json'), /* Padtec NMS alarms: energia / temperatura / resposta (padtec.js) */
+  padtecmeta:   path.join(DATA_DIR, 'padtecmeta.json')
 };
 
 function readCollection(name) {
@@ -42,6 +47,8 @@ function writeCollection(name, data) {
 const zabbix    = require('./zabbix');
 const ZBX_TOKEN = zabbix.loadToken(DATA_DIR);
 const store     = { read: readCollection, write: writeCollection };
+const netevents  = require('./netevents');
+const padtec     = require('./padtec');
 const leofeed    = require('./leofeed');
 const FEED_TOKEN = leofeed.loadFeedToken(DATA_DIR);
 
@@ -94,6 +101,11 @@ const server = http.createServer((req, res) => {
   }
 
   /* public, sanitized status for the Amazon Leo client page */
+  /* route/segment events for the home dashboard + the locality lookup list (internal, read-only) */
+  if (url.pathname === '/api/network/events' && req.method === 'GET') { send(res, 200, netevents.eventsResponse(store)); return; }
+  if (url.pathname === '/api/network/localities' && req.method === 'GET') { send(res, 200, netevents.localitiesResponse(store)); return; }
+  if (url.pathname === '/api/network/padtec' && req.method === 'GET') { send(res, 200, padtec.response(store)); return; }
+
   if (url.pathname === '/api/leo/status') {
     if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
     send(res, 200, zabbix.publicStatus(store));
@@ -143,5 +155,8 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('transmission-portal API listening on 127.0.0.1:' + PORT);
+  const moved = zabbix.migrate(store);
+  if (moved) console.log('moved ' + moved + ' non-Amazon-Leo Zabbix events to netalarms');
   require('./nms').start(DATA_DIR, (body) => zabbix.metric(body, store));   /* Amazon Leo Rx from the NMS */
+  padtec.start(DATA_DIR, store);                                            /* Padtec alarms for the home dashboard */
 });

@@ -49,7 +49,7 @@ function bindRipples() {
 /* ── Hero entrance: eyebrow, masked title words, subtitle, stats ── */
 function animateHero() {
   var hero = document.querySelector('.home-hero');
-  if (!hero) return;
+  if (!hero) { if (typeof homeEnter === 'function') homeEnter(); return; }   /* home without the banner */
   hero.classList.remove('hero-in');
   void hero.offsetWidth;
   hero.classList.add('hero-in');

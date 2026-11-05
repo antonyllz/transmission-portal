@@ -73,6 +73,7 @@ var PAGE_ROUTES = {
   'pg-rma':         { path: 'rmas',                    title: 'RMAs' },
   'pg-lambdas':     { path: 'lambdas',                 title: 'Lambdas' },
   'pg-alm':         { path: 'almoxarifado',            title: 'Almoxarifado' },
+  'pg-localidades': { path: 'localidades',             title: 'Localidades' },
   'pg-leo-dash':    { path: 'amazon-leo/dashboard',    title: 'Dashboard Amazon Leo' }
 };
 
@@ -88,6 +89,7 @@ var ROUTE_OPENERS = {
   'rmas':                    function() { openRMA(); },
   'lambdas':                 function() { openLambdas(); },
   'almoxarifado':            function() { openAlm(); },
+  'localidades':             function() { showPage('pg-localidades'); },
   'amazon-leo/dashboard':    function() { openLeoDash(); }
 };
 

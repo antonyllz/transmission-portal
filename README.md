@@ -61,10 +61,15 @@ src/
 └── hooks/use-now.ts                  # live clock + duration formatting
 ```
 
-**Network events data:** `fetchNetworkSnapshot()` in `src/data/network-events.ts` returns mock data
-(Campina Grande-PB and São Paulo-SP down, Padtec `SPVL-HB CGE-A01` unavailable) and the screen shows
-a "Dados simulados" badge. When the collection exists, replace that function with the API call
-returning the same shape (`events`, `padtecAlarms`, `updatedAt`, `simulated: false`).
+**Network events data:** segments (trechos) are real — the Zabbix webhook (`/api/zabbix/webhook`)
+sends every event that doesn't match Amazon Leo (circuit ids / `SLZ501` / `CPV501` in host, trigger,
+opdata or tags) to the `netalarms` collection. `server/netevents.js` reads the segment from the router
+names (`UF-LOC-SITE-…`): host `PE-AIN-A01-BHM-RT-001` + trigger `… Core: PE-TIU-A01-BKB-RT-001 … down`
+→ segment `PE-AIN x PE-TIU`; both ends of a link land on the same segment. Locality names (UF + Anatel
+code → city) come from the DWDM map plus the **Localidades** page (`#/localidades`, `localities`
+collection), which also lists codes seen in alarms that have no name yet. Padtec alarms come from the
+NMS API (`server/padtec.js`, every 60 s, same `NMS_TOKEN` / `data/nms-token.txt` as the Rx collector):
+active alarms whose name has "Via A"/"Via B" or "Falha interna de alimentação" (energia), "Temperatura" or "Tempo de resposta".
 
 **Demands:** the notepads read and write the same data as before (`dmdGetAll`/`dmdSave` in
 `assets/js/database.js`, synced to `/api/demands` and polled every 8s); only the rendering moved to React.
