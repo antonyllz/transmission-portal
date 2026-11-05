@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import {
   IconCheck,
   IconClockHour4,
   IconInfinity,
-  IconMessageCircle,
   IconPlus,
-  IconSend2,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
@@ -16,7 +14,6 @@ import { useNow } from "@/hooks/use-now";
 import {
   PRIO,
   PRIO_ORDER,
-  addComment,
   addDemand,
   demandAge,
   demandState,
@@ -26,30 +23,15 @@ import {
   type Priority,
 } from "@/lib/demands-store";
 
-type FilterKey = "all" | "urgent" | "due" | "free";
-const FILTERS: Record<FilterKey, { label: string; test: (d: Demand, now: number) => boolean }> = {
-  all: { label: "Todas", test: () => true },
-  urgent: { label: "Urgentes", test: (d) => d.priority === "urgente" },
-  due: {
-    label: "Vencendo",
-    test: (d, now) => {
-      const c = demandState(d, now).cls;
-      return c === "soon" || c === "late";
-    },
-  },
-  free: { label: "Sem prazo", test: (d) => d.duration == null },
-};
-
 const PRIO_SHORT: Record<Priority, string> = { urgente: "▲ 6h", media: "● 1d", baixa: "■ 7d", sempre: "∞ Sempre" };
 
 export function DemandsBoard() {
   const demands = useDemands();
   const now = useNow(10_000); // countdowns show hours/minutes only
-  const [filter, setFilter] = useState<FilterKey>("all");
   const [openId, setOpenId] = useState<string | null>(null); // demand id or "new"
   const [finishing, setFinishing] = useState<Record<string, true>>({});
 
-  const shown = useMemo(() => demands.filter((d) => FILTERS[filter].test(d, now)), [demands, filter, now]);
+  const shown = demands;
   const soon = demands.filter((d) => demandState(d, now).cls === "soon").length;
   const late = demands.filter((d) => demandState(d, now).cls === "late").length;
   const open = openId && openId !== "new" ? demands.find((d) => d.id === openId) : undefined;
@@ -84,26 +66,6 @@ export function DemandsBoard() {
               </span>
             )}
           </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(FILTERS) as FilterKey[]).map((k) => {
-            const n = demands.filter((d) => FILTERS[k].test(d, now)).length;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setFilter(k)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                  filter === k
-                    ? "border-transparent bg-[#1d1d1f] text-white dark:bg-[#f5f5f7] dark:text-[#1d1d1f]"
-                    : "border-black/10 text-[#3a3a3c] hover:border-black/20 dark:border-white/10 dark:text-[#d1d1d6] dark:hover:border-white/25",
-                )}
-              >
-                {FILTERS[k].label} <b className="ml-0.5 font-semibold opacity-50">{n}</b>
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -141,12 +103,8 @@ export function DemandsBoard() {
           {!shown.length && (
             <div className="flex h-[232px] min-w-[200px] flex-1 flex-col items-center justify-center gap-1 text-center">
               <IconCheck className="mb-1 h-7 w-7 text-[#16a34a] dark:text-[#30d158]" />
-              <b className="text-sm text-[#1d1d1f] dark:text-[#f5f5f7]">{demands.length ? "Nada neste filtro" : "Tudo em dia"}</b>
-              <span className="text-xs text-[#6e6e73] dark:text-[#8e8e93]">
-                {demands.length
-                  ? `Nenhuma demanda ${FILTERS[filter].label.toLowerCase()} agora.`
-                  : "Nenhuma demanda aberta. Use o + para registrar."}
-              </span>
+              <b className="text-sm text-[#1d1d1f] dark:text-[#f5f5f7]">Tudo em dia</b>
+              <span className="text-xs text-[#6e6e73] dark:text-[#8e8e93]">Nenhuma demanda aberta. Use o + para registrar.</span>
             </div>
           )}
         </div>
@@ -188,14 +146,13 @@ function DemandPad({
   onOpen: () => void;
 }) {
   const st = demandState(d, now);
-  const nc = d.comments?.length ?? 0;
   const accent = PRIO()[d.priority]?.bar ?? "#2563eb";
 
   return (
     <Notepad
       accent={accent}
       seed={d.id}
-      sheets={Math.min(4, 2 + nc)}
+      sheets={3}
       layoutId={`pad-${d.id}`}
       onOpen={onOpen}
       ariaLabel={`Demanda ${st.label}: ${d.description}`}
@@ -240,12 +197,6 @@ function DemandPad({
           )}
           <span className="flex items-center justify-between text-[11px] text-[#8e8e93]">
             <span>Criada {demandAge(d.createdAt, now)}</span>
-            {nc > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <IconMessageCircle className="h-3 w-3" />
-                {nc}
-              </span>
-            )}
           </span>
         </span>
       </span>
@@ -433,20 +384,6 @@ function DemandSheet({
 }) {
   const st = demandState(d, now);
   const accent = PRIO()[d.priority]?.bar ?? "#2563eb";
-  const [comment, setComment] = useState("");
-  const list = useRef<HTMLDivElement>(null);
-  const comments = d.comments ?? [];
-
-  useEffect(() => {
-    list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" });
-  }, [comments.length]);
-
-  const send = () => {
-    const t = comment.trim();
-    if (!t) return;
-    addComment(d.id, t);
-    setComment("");
-  };
 
   return (
     <Overlay onClose={onClose}>
@@ -478,48 +415,6 @@ function DemandSheet({
           )}
 
           <p className="np-text text-[15px] leading-[22px] break-words whitespace-pre-line">{d.description}</p>
-
-          <div className="flex min-h-0 flex-col gap-2 border-t border-black/[.06] pt-3 dark:border-white/[.08]">
-            <div className="text-[11px] font-semibold tracking-wider text-[#8e8e93] uppercase">
-              Comentários {comments.length > 0 && `· ${comments.length}`}
-            </div>
-            <div ref={list} className="flex max-h-[180px] min-h-0 flex-col gap-1.5 overflow-y-auto">
-              {comments.length ? (
-                comments.map((c, i) => (
-                  <motion.div
-                    key={`${c.at}-${i}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-2 rounded-lg bg-black/[.035] px-2.5 py-1.5 text-[13px] dark:bg-white/[.06]"
-                  >
-                    <span className="shrink-0 font-medium text-[#8e8e93] tabular-nums">
-                      {new Date(c.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    <span className="np-text break-words">{c.text}</span>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="text-[13px] text-[#aeaeb2] dark:text-[#636366]">Sem comentários ainda</div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 rounded-full border border-black/10 py-1 pr-1 pl-3.5 dark:border-white/15">
-              <input
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Comentar..."
-                className="np-text min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#aeaeb2] dark:placeholder:text-[#636366]"
-              />
-              <button
-                type="button"
-                onClick={send}
-                aria-label="Comentar"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-tely-blue text-white hover:bg-[#0540d4]"
-              >
-                <IconSend2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
 
           <div className="flex items-center gap-2 pt-1">
             <button

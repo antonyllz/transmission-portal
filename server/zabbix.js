@@ -90,8 +90,13 @@ function handle(body, store) {
   if (!ev.eventId) throw new Error('event_id is required');
   /* nothing to show: Zabbix 'Test' runs (macros unresolved → host and trigger empty) */
   if (!ev.host && !ev.hostName && !ev.trigger) return { ok: true, ignored: 'no host / trigger (test event?)' };
-  const value  = String(b.event_value != null ? b.event_value : b.value);   /* 1 = problem, 0 = recovery */
+  const value  = String(b.event_value != null ? b.event_value : b.value).trim();   /* 1 = problem, 0 = recovery */
   const update = String(b.event_update || '0') === '1';
+  /* recovery: {EVENT.VALUE} = 0, but also accept a status text ({EVENT.STATUS} = RESOLVED) or any
+     recovery macro that came resolved (in problem messages they arrive unresolved → blanked above) */
+  const isRecovery = value === '0' || /^(resolved|ok|recovered|recovery)$/i.test(value) ||
+    /^resolved$/i.test(String(b.event_status || b.status || '').trim()) ||
+    !!(b.recovery_ts || b.recovery_date || b.recovery_id || b.event_recovery_id);
   const m = match(ev);
   const isLeo = !!(m.site || m.circuit);
   /* a real segment alarm always comes from a router (host); manual/webhook tests without one are dropped */
@@ -109,9 +114,19 @@ function handle(body, store) {
     const orec = olist.find((x) => x.eventId === ev.eventId);
     if (orec) { coll = other; list = olist; rec = orec; }
   }
+  /* a recovery whose id doesn't match (media type sending {EVENT.RECOVERY.ID}, for instance):
+     close the open problem with the same host + trigger */
+  if (!rec && isRecovery) {
+    for (const c of [coll, coll === 'netalarms' ? 'leoalarms' : 'netalarms']) {
+      const l = c === coll ? list : store.read(c);
+      const r = l.filter((x) => x.status === 'problem' && x.host === ev.host && x.trigger === ev.trigger)
+        .sort((x, y) => String(y.start).localeCompare(String(x.start)))[0];
+      if (r) { coll = c; list = l; rec = r; break; }
+    }
+  }
   const startISO = toISO(b.event_ts, b.event_date, b.event_time, offset) || now;
 
-  if (value === '0') {                                   /* recovery */
+  if (isRecovery) {                                      /* recovery */
     const endISO = toISO(b.recovery_ts, b.recovery_date, b.recovery_time, offset) || now;
     if (!rec) { rec = Object.assign({}, ev, extra, { status: 'problem', start: startISO }); list.push(rec); }
     rec.status = 'resolved'; rec.end = endISO;
@@ -133,6 +148,9 @@ function handle(body, store) {
   if (!meta.firstReceivedAt) meta.firstReceivedAt = now;
   meta.lastHost = ev.host;
   store.write(metaName, [meta]);
+  /* one line per event, so `docker compose logs | grep zabbix:` shows what arrives and where it went */
+  console.log('zabbix: event ' + ev.eventId + ' value=' + value + (update ? ' update' : '') + ' host=' + (ev.host || '-') +
+    ' → ' + (coll === 'netalarms' ? 'trechos' : 'amazon-leo') + ' ' + rec.status + (rec.eventId !== ev.eventId ? ' (closed ' + rec.eventId + ' by host+trigger)' : ''));
   return { ok: true, eventId: rec.eventId, status: rec.status, target: coll === 'netalarms' ? 'trechos' : 'amazon-leo',
            site: rec.site, circuit: rec.circuit, segment: rec.key || null };
 }
