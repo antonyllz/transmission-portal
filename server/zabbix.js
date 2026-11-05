@@ -88,6 +88,8 @@ function handle(body, store) {
     url:      String(b.event_url || '')
   };
   if (!ev.eventId) throw new Error('event_id is required');
+  /* nothing to show: Zabbix 'Test' runs (macros unresolved → host and trigger empty) */
+  if (!ev.host && !ev.hostName && !ev.trigger) return { ok: true, ignored: 'no host / trigger (test event?)' };
   const value  = String(b.event_value != null ? b.event_value : b.value);   /* 1 = problem, 0 = recovery */
   const update = String(b.event_update || '0') === '1';
   const m = match(ev);

@@ -27,8 +27,9 @@ const UF_NAMES = {
   SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins'
 };
 
-/* a device / site name: UF-LOC-SITE[-more parts], UF must be a real state */
-const NODE_RE = /\b([A-Z]{2})-([A-Z0-9]{2,5})-([A-Z]\d{2})((?:-[A-Z0-9]+)*)/g;
+/* a device / site name: UF-LOC-<more parts> (e.g. PE-TIU-A01-BKB-RT-001 or PE-TIU-BKB-RT-001);
+   UF must be a real state and LOC 3–4 letters (Anatel code) */
+const NODE_RE = /\b([A-Z]{2})-([A-Z]{3,4})((?:-[A-Z0-9]+)+)/g;
 
 function nodes(text) {
   const out = [];
@@ -37,7 +38,8 @@ function nodes(text) {
   NODE_RE.lastIndex = 0;
   while ((m = NODE_RE.exec(s))) {
     if (!UF_NAMES[m[1]]) continue;
-    out.push({ uf: m[1], loc: m[2], key: m[1] + '-' + m[2], site: m[1] + '-' + m[2] + '-' + m[3], device: m[0] });
+    const site = /^-([A-Z]\d{2})\b/.exec(m[3]);
+    out.push({ uf: m[1], loc: m[2], key: m[1] + '-' + m[2], site: m[1] + '-' + m[2] + (site ? '-' + site[1] : ''), device: m[0] });
   }
   return out;
 }
@@ -48,7 +50,7 @@ function parseSegment(ev) {
   const far = nodes(ev.trigger).filter((n) => !a || n.device !== a.device);
   const b = (a && far.find((n) => n.key !== a.key)) || far[0] || null;
   const t = String(ev.trigger || '');
-  const iface = (/\bInterface\s+([^\s,]+)/i.exec(t) || [])[1] || null;
+  const iface = (/\bInterface\s+([^\s,(:]+)/i.exec(t) || [])[1] || null;
   const speed = (/\[\s*([\d.,]+\s*[KMGT]?bps)\s*\]/i.exec(t) || [])[1] || null;
   const role  = (/-\s*([A-Za-zÀ-ú ]{2,20}):\s*[A-Z]{2}-[A-Z0-9]{2,5}-/.exec(t) || [])[1] || null;
   const key = a && b ? [a.key, b.key].sort().join(' x ') : a ? a.key : null;
@@ -93,7 +95,8 @@ function localities(store) {
 function localitiesResponse(store) {
   const items = localities(store);
   const seen = {};
-  store.read('netalarms').forEach((e) => {
+  store.read('netalarms').forEach((raw) => {
+    const e = Object.assign({}, raw, parseSegment(raw));
     [e.a, e.b].forEach((n) => {
       if (!n || items[n.key]) return;
       const s = seen[n.key] || (seen[n.key] = { key: n.key, uf: n.uf, code: n.loc, count: 0, lastSeen: null });
@@ -112,7 +115,7 @@ function localitiesResponse(store) {
 function eventsResponse(store) {
   const meta = store.read('netzbxmeta')[0] || null;
   const since = Date.now() - 24 * 3600000;
-  const pub = (e) => ({
+  const pub = (raw) => { const e = Object.assign({}, raw, parseSegment(raw)); return {
     id: e.eventId, host: e.host, trigger: e.trigger,
     severity: e.severity, severityName: e.severityName,
     status: e.status === 'problem' ? 'active' : 'resolved',
@@ -120,8 +123,9 @@ function eventsResponse(store) {
     start: e.start, end: e.end || null,
     a: e.a || null, b: e.b || null, key: e.key || null,
     iface: e.iface || null, speed: e.speed || null, role: e.role || null
-  });
-  const all = store.read('netalarms');
+  }; };
+  /* events without host or trigger (e.g. a Zabbix 'Test' kept from before) can't be shown */
+  const all = store.read('netalarms').filter((e) => e.host || e.hostName || e.trigger);
   return {
     generatedAt: new Date().toISOString(),
     receivingSince: meta ? meta.firstReceivedAt : null,

@@ -299,12 +299,19 @@ function TrechoTile({ t, locs, now, i }: { t: Trecho; locs: Record<string, Local
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#dc2626] opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#dc2626]" />
           </span>
-          <Place n={t.a} locs={locs} />
+          {t.a ? <Place n={t.a} locs={locs} /> : <span className="truncate font-mono">{t.events[0].host}</span>}
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 pl-[3px]">
-          <span className={cn("shrink-0 text-[11px]", muted)}>{sameSite ? "interno" : "↔"}</span>
-          {!sameSite && <Place n={t.b} locs={locs} />}
-        </span>
+        {t.b || sameSite ? (
+          <span className="flex min-w-0 items-center gap-1.5 pl-[3px]">
+            <span className={cn("shrink-0 text-[11px]", muted)}>{sameSite ? "interno" : "↔"}</span>
+            {!sameSite && <Place n={t.b} locs={locs} />}
+          </span>
+        ) : (
+          /* far end not named in the trigger: show what the alarm says instead */
+          <span className={cn("truncate pl-[3px] font-mono text-[11px] font-normal", muted)}>
+            {[t.events[0].iface, t.events[0].speed].filter(Boolean).join(" · ") || t.events[0].trigger}
+          </span>
+        )}
       </div>
       <div className="mt-auto flex items-end justify-between gap-2">
         <span className={cn("text-[11px] leading-tight", muted)}>
