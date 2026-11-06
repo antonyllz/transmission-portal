@@ -40,12 +40,20 @@ export type DockImage = {
   position?: string;
   /** Fills any part of the circle the picture doesn't cover. */
   background?: string;
+  /** Soften the picture's top/bottom edges into the blurred backdrop (for wide pictures). */
+  feather?: boolean;
 };
 
 /* the picture, as a circle-filling layer that zooms in on hover */
 function DockImageFill({ image }: { image: DockImage }) {
   return (
     <span className="absolute inset-0 overflow-hidden rounded-full">
+      {/* the same picture, enlarged and blurred, fills whatever the crop leaves empty in the circle */}
+      <span
+        aria-hidden="true"
+        className="absolute -inset-2 scale-125 bg-cover bg-center bg-no-repeat blur-[6px] brightness-75"
+        style={{ backgroundImage: `url("${image.src}")` }}
+      />
       <span
         className="dock-img absolute inset-0 bg-no-repeat"
         style={{
@@ -53,6 +61,12 @@ function DockImageFill({ image }: { image: DockImage }) {
           backgroundSize: image.size ?? "cover",
           backgroundPosition: image.position ?? "center",
           backgroundColor: image.background,
+          ...(image.feather
+            ? {
+                maskImage: "linear-gradient(to bottom, transparent 8%, #000 24%, #000 76%, transparent 92%)",
+                WebkitMaskImage: "linear-gradient(to bottom, transparent 8%, #000 24%, #000 76%, transparent 92%)",
+              }
+            : {}),
         }}
       />
     </span>

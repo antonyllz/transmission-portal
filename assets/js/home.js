@@ -17,6 +17,10 @@ function HeroNet(canvasId, opts) {
   var TINTS  = ['#ffffff', '#cfe0ff', '#a7f3e4', '#d6d0ff', '#b9e6ff'];
   var LEXICON = opts.lexicon || ['DWDM', 'TRANSMISSION', 'NETWORK', 'ROADM', 'C-BAND', 'OSNR', 'λ 1550 nm',
                  '193.1 THz', 'MUX / DEMUX', 'OTN', '400G', 'OPTICAL LAYER', 'WDM', 'FIBER', 'OLA', '1+1 PROTECTION'];
+  /* Christmas theme (<html class="xmas">, set by src/components/xmas/season.ts): festive pulses and words */
+  var XMAS_TINTS = ['#ff6b6b', '#7ee2a8', '#ffd166', '#ffffff', '#ff9ecf'];
+  var XMAS_WORDS = ['HO HO HO', 'FELIZ NATAL', 'BOAS FESTAS', '❄ 400G DE PRESENTE', 'NOEL ↔ POLO NORTE'];
+  function xmas() { return document.documentElement.classList.contains('xmas'); }
 
   /* seeded random: the mesh keeps its shape across resizes */
   function rng(seed) {
@@ -183,7 +187,7 @@ function HeroNet(canvasId, opts) {
     var fwd = Math.random() < .5;
     pulses.push({
       L: L, e: e, from: fwd ? e.a : e.b, s: 0, v: 70 + Math.random() * 50,
-      tint: TINTS[Math.floor(Math.random() * TINTS.length)], trail: [], hops: 0,
+      tint: (function(t) { return t[Math.floor(Math.random() * t.length)]; })(xmas() ? XMAS_TINTS : TINTS), trail: [], hops: 0,
       maxHops: 3 + Math.floor(Math.random() * 5), fade: 1, dying: false
     });
   }
@@ -211,7 +215,8 @@ function HeroNet(canvasId, opts) {
   function spawnWord() {
     var L = layers[1], n = L.nodes[Math.floor(Math.random() * L.nodes.length)];
     if (!n || n.x < (W > 760 ? W * .5 : 0) || n.x > W - 150 || n.y < 34 || n.y > H - 18 || fadeAt(n.x, n.y) < .6) return;
-    var text = LEXICON[Math.floor(Math.random() * LEXICON.length)];
+    var lex = xmas() && Math.random() < .5 ? XMAS_WORDS : LEXICON;
+    var text = lex[Math.floor(Math.random() * lex.length)];
     if (words.some(function(w) { return w.text === text || Math.hypot(w.n.x - n.x, w.n.y - n.y) < 150; })) return;
     words.push({ n: n, text: text, shown: 0, phase: 'type', hold: 0, dx: 14 + Math.random() * 18, dy: -10 - Math.random() * 14 });
   }

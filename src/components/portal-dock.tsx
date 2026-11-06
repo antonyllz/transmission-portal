@@ -18,7 +18,7 @@ const NAV: NavItem[] = [
   {
     title: "Amazon Leo",
     route: "amazon-leo",
-    image: { src: "assets/images/amazon-leo-card.jpg", size: "138% auto", position: "47% 47%", background: "#160d2c" },
+    image: { src: "assets/images/amazon-leo-card.jpg", size: "138% auto", position: "47% 47%", feather: true },
   },
   {
     title: "Starlink",

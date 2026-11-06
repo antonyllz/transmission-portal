@@ -153,3 +153,55 @@ body { padding-bottom: var(--dock-space); }
   .di-crate { opacity: 0; }
   .di-smoke { opacity: 0; }
 }
+
+/* ═══ Christmas theme (html.xmas — see src/components/xmas) ═══ */
+.xmas-bulb {
+  width: 8px; height: 12px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.85), var(--c) 45%);
+  box-shadow: 0 0 6px 2px var(--c), 0 0 14px 3px color-mix(in srgb, var(--c) 45%, transparent);
+  animation-name: xmas-twinkle; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
+}
+.xmas-bulb::before {   /* socket */
+  content: ''; position: absolute; left: 1.5px; top: -3px; width: 5px; height: 4px; border-radius: 1px; background: #1f3b2c;
+}
+@keyframes xmas-twinkle {
+  0%, 100% { opacity: 1; filter: brightness(1.15); }
+  50%      { opacity: .35; filter: brightness(.7); box-shadow: 0 0 2px 0 var(--c); }
+}
+
+.xmas-bubble {
+  background: #fff; color: #b91c1c;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22), 0 0 0 2px rgba(214,40,40,.15);
+}
+.xmas-santa { filter: drop-shadow(0 10px 16px rgba(0,0,0,.35)); -webkit-user-drag: none; }
+
+/* toggle in the topbar */
+.xmas-toggle { color: #fff; }
+.xmas-toggle[aria-pressed="true"] svg { animation: xmas-spin 9s linear infinite; }
+@keyframes xmas-spin { to { transform: rotate(360deg); } }
+
+/* snow piled on the bottom edge of the banners */
+html.xmas .home-hero::after {
+  height: 64px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='20' viewBox='0 0 240 20'%3E%3Cpath d='M0 20V11Q14 4 30 9T62 8T96 10T128 6T162 9T196 7T240 10V20Z' fill='%23dbe8ff'/%3E%3Cpath d='M0 20V14Q18 7 36 12T70 11T104 13T138 9T172 12T206 10T240 13V20Z' fill='%23fff'/%3E%3C/svg%3E") repeat-x left bottom / 240px 20px,
+    linear-gradient(to bottom, rgba(6,73,252,0), rgba(6,40,160,.25));
+}
+html.xmas .cl-hero::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 20px; z-index: 3; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='20' viewBox='0 0 240 20'%3E%3Cpath d='M0 20V11Q14 4 30 9T62 8T96 10T128 6T162 9T196 7T240 10V20Z' fill='%23dbe8ff'/%3E%3Cpath d='M0 20V14Q18 7 36 12T70 11T104 13T138 9T172 12T206 10T240 13V20Z' fill='%23fff'/%3E%3C/svg%3E") repeat-x left bottom / 240px 20px;
+}
+
+/* Santa hat on the side dock */
+html.xmas #dock-root nav > div > div:first-child { position: relative; }
+html.xmas #dock-root nav > div > div:first-child::before {
+  content: ''; position: absolute; z-index: 2; pointer-events: none;
+  top: -27px; left: -9px; width: 58px; height: 47px; transform: rotate(-16deg);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 52'%3E%3Cpath d='M9 40C13 18 29 4 47 6c11 1 15 10 11 18-4-6-12-8-16-4 6 6 10 13 12 20z' fill='%23d62828'/%3E%3Cpath d='M47 6c11 1 15 10 11 18-2-3-5-5-8-5 1-6 0-10-3-13z' fill='%23a51d1d'/%3E%3Crect x='4' y='35' width='56' height='13' rx='6.5' fill='%23fff'/%3E%3Ccircle cx='58' cy='25' r='6' fill='%23fff'/%3E%3C/svg%3E") no-repeat center / contain;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmas-bulb, .xmas-toggle[aria-pressed="true"] svg { animation: none; }
+}

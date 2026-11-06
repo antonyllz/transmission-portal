@@ -83,6 +83,11 @@ npm run build     # one-off build
 npm run dev       # rebuild on every change in src/
 ```
 
+**Christmas theme** (`src/components/xmas/`): snow, lights under the topbar, a Santa hat on the dock,
+snow on the banners and the two Santas (`assets/images/xmas/`) taking turns on screen. It turns itself on
+between `SEASON.from` and `SEASON.to` in `season.ts` (Nov 1 – Jan 6) and each viewer can switch it off
+with the ❄ button in the topbar (saved in the browser).
+
 To add or change a dock item, edit `NAV` in `src/components/portal-dock.tsx` (icons from `@tabler/icons-react`).
 
 ## Running locally

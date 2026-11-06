@@ -29,6 +29,7 @@
   <div class="tb-div"></div>
   <span class="tb-lbl">Network Engineering &mdash; Transmission</span>
   <div class="tb-spacer"></div>
+  <span id="xmas-toggle-root" style="display:contents"></span>
   <button class="tb-icon-btn" id="settings-btn" onclick="openSettings()" aria-label="Configurações">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -632,6 +633,8 @@
 
 <!-- ══ MAIN NAVIGATION — floating dock (React island) ══ -->
 <div id="dock-root"></div>
+<!-- Christmas theme (snow, lights, Santas) — on in season, see src/components/xmas/season.ts -->
+<div id="xmas-root"></div>
 <!-- React islands (dock, network events, demands) — built from src/ by `npm run build` -->
 <script type="module" src="assets/react/portal.js"></script>
 
