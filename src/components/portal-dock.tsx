@@ -10,11 +10,11 @@ type NavItem = { title: string; route: string } & ({ Icon: () => React.JSX.Eleme
 
 const NAV: NavItem[] = [
   { title: "Home", route: "", Icon: HomeIcon },
+  { title: "Almoxarifado", route: "almoxarifado", Icon: WarehouseIcon },
   { title: "RMAs", route: "rmas", Icon: RmaIcon },
   { title: "Lambdas", route: "lambdas", Icon: LambdaIcon },
   { title: "Generate LOA", route: "loa", Icon: LoaIcon },
   { title: "Generate RFO", route: "rfo", Icon: RfoIcon },
-  { title: "Almoxarifado", route: "almoxarifado", Icon: WarehouseIcon },
   {
     title: "Amazon Leo",
     route: "amazon-leo",

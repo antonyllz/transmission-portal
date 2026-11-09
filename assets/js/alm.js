@@ -219,7 +219,7 @@ function almRender() {
   var toks = r.toks;
   list.innerHTML = almShown.slice(0, almLimit).map(function(it, i) {
     return '<div class="alm-row' + (i === almSel ? ' sel' : '') + '" data-i="' + i + '" style="animation-delay:' + Math.min(i, 14) * 0.015 + 's">'
-      + '<button class="alm-code" data-i="' + i + '" title="Copiar código">' + almHighlight(it.codigo, toks)
+      + '<button class="alm-code" data-i="' + i + '" title="Copiar código e descrição">' + almHighlight(it.codigo, toks)
       +   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>'
       + '<div class="alm-main">'
       +   '<div class="alm-desc">' + almHighlight(it.descricao, toks) + '</div>'
@@ -234,13 +234,14 @@ function almRender() {
   + (n > almLimit ? '<button class="alm-more" id="alm-more">Mostrar mais ' + Math.min(ALM_PAGE, n - almLimit) + ' de ' + (n - almLimit).toLocaleString('pt-BR') + ' restantes</button>' : '');
 }
 
-/* ── copy + toast ── */
+/* ── copy + toast ── copies "CODE - DESCRIPTION" */
 function almCopy(i) {
   var it = almShown[i];
   if (!it) return;
-  var done = function() { almToast('Código <b>' + esc(it.codigo) + '</b> copiado'); };
-  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(it.codigo).then(done, function() { almCopyFallback(it.codigo); done(); });
-  else { almCopyFallback(it.codigo); done(); }
+  var text = String(it.codigo).trim() + (it.descricao ? ' - ' + String(it.descricao).trim() : '');
+  var done = function() { almToast('<b>' + esc(it.codigo) + '</b> copiado com a descrição'); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, function() { almCopyFallback(text); done(); });
+  else { almCopyFallback(text); done(); }
   var row = document.querySelector('.alm-row[data-i="' + i + '"]');
   if (row) { row.classList.remove('copied'); void row.offsetWidth; row.classList.add('copied'); }
 }
