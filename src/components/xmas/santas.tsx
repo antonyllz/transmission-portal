@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { prefersReducedMotion } from "./season";
 
-/* The two Santas take turns:
-   • "peek": Santa 1 rises from the bottom-right corner, leans in, says
+/* The three Santas take turns, always starting with Santa 3:
+   • "peek": Santa 3 (or Santa 1) rises from the bottom-right corner, leans in, says
      something, and ducks back down;
    • "walk": Santa 2 walks across the bottom of the screen, right to left,
      with a little bounce in his step and a line of his own.
@@ -12,6 +12,7 @@ import { prefersReducedMotion } from "./season";
 
 const SANTA_1 = "assets/images/xmas/santa-1.webp";
 const SANTA_2 = "assets/images/xmas/santa-2.webp";
+const SANTA_3 = "assets/images/xmas/santa-3.webp";
 
 const LINES = [
   "Ho ho ho! 🎅",
@@ -26,7 +27,14 @@ const LINES = [
 const FIRST_DELAY = 3500;
 const GAP = 22000;
 
-type Act = "peek" | "walk" | null;
+type Act = "peek3" | "walk" | "peek1";
+/* the order they show up in; Santa 3 is the first one on every page load */
+const ORDER: Act[] = ["peek3", "walk", "peek1", "walk"];
+/* the peeking Santas: image and box size (keeps each image's proportions) */
+const PEEK = {
+  peek1: { src: SANTA_1, box: "h-[230px] w-[103px] sm:h-[300px] sm:w-[134px]" },
+  peek3: { src: SANTA_3, box: "h-[230px] w-[127px] sm:h-[300px] sm:w-[165px]" },
+};
 
 function pick(prev?: string) {
   let s = LINES[Math.floor(Math.random() * LINES.length)];
@@ -35,10 +43,10 @@ function pick(prev?: string) {
 }
 
 export function Santas() {
-  const [act, setAct] = useState<Act>(null);
+  const [act, setAct] = useState<Act | null>(null);
   const [line, setLine] = useState(LINES[0]);
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number }[]>([]);
-  const next = useRef<Act>("peek");
+  const turn = useRef(0);
   const first = useRef(true);
   const reduced = prefersReducedMotion();
 
@@ -51,8 +59,7 @@ export function Santas() {
       t = setTimeout(() => {
         if (document.hidden) return schedule(5000);
         setLine((l) => pick(l));
-        setAct(next.current);
-        next.current = next.current === "peek" ? "walk" : "peek";
+        setAct(ORDER[turn.current++ % ORDER.length]);
       }, ms);
     };
     schedule(first.current ? FIRST_DELAY : GAP);
@@ -72,7 +79,9 @@ export function Santas() {
   return (
     <>
       <AnimatePresence>
-        {act === "peek" && <Peek key="peek" line={line} onDone={done} onPop={pop} reduced={reduced} />}
+        {(act === "peek1" || act === "peek3") && (
+          <Peek key={act} {...PEEK[act]} line={line} onDone={done} onPop={pop} reduced={reduced} />
+        )}
         {act === "walk" && <Walk key="walk" line={line} onDone={done} onPop={pop} reduced={reduced} />}
       </AnimatePresence>
       {bursts.map((b) => (
@@ -100,8 +109,22 @@ function Bubble({ text, side }: { text: string; side: "left" | "right" }) {
   );
 }
 
-/* Santa 1 — rises from the bottom-right corner, stays a few seconds, ducks back */
-function Peek({ line, onDone, onPop, reduced }: { line: string; onDone: () => void; onPop: (e: React.MouseEvent) => void; reduced: boolean }) {
+/* Santa 1 / Santa 3 — rises from the bottom-right corner, stays a few seconds, ducks back */
+function Peek({
+  src,
+  box,
+  line,
+  onDone,
+  onPop,
+  reduced,
+}: {
+  src: string;
+  box: string;
+  line: string;
+  onDone: () => void;
+  onPop: (e: React.MouseEvent) => void;
+  reduced: boolean;
+}) {
   const [talk, setTalk] = useState(false);
   const [hop, setHop] = useState(0);
   useEffect(() => {
@@ -114,7 +137,7 @@ function Peek({ line, onDone, onPop, reduced }: { line: string; onDone: () => vo
   }, [onDone]);
   return (
     <motion.div
-      className="fixed right-6 bottom-0 z-[245] h-[230px] w-[103px] sm:h-[300px] sm:w-[134px]"
+      className={"fixed right-6 bottom-0 z-[245] " + box}
       initial={{ y: "100%", rotate: 8 }}
       animate={{ y: "28%", rotate: -4 }}
       exit={{ y: "105%", rotate: 10, transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
@@ -122,7 +145,7 @@ function Peek({ line, onDone, onPop, reduced }: { line: string; onDone: () => vo
     >
       <AnimatePresence>{talk && <Bubble text={line} side="left" />}</AnimatePresence>
       <motion.img
-        src={SANTA_1}
+        src={src}
         alt="Papai Noel"
         draggable={false}
         onClick={(e) => {
