@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   IconAlertTriangle,
   IconChevronDown,
+  IconX,
   IconCircleCheck,
   IconClockHour4,
   IconBolt,
@@ -85,6 +87,7 @@ const strong = "text-[#1d1d1f] dark:text-[#f5f5f7]";
 export function NetworkEventsDashboard() {
   const { snap, error } = useNetworkSnapshot();
   const now = useNow(30_000);
+  const [expanded, setExpanded] = useState(false);
 
   if (!snap) {
     return error ? (
@@ -105,22 +108,18 @@ export function NetworkEventsDashboard() {
     <div className="flex flex-col gap-4">
       {/* ── segments first ── */}
       <section className={cn(card, "p-5")}>
-        <PanelHead title="Trechos down" count={down} hint="Zabbix" />
-        {down ? (
-          <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5">
-            <AnimatePresence initial={false}>
-              {snap.trechos.map((t, i) => (
-                <TrechoTile key={t.key} t={t} locs={snap.localities} now={now} i={i} />
-              ))}
-            </AnimatePresence>
-          </ul>
-        ) : (
-          <ul className="mt-3">
-            <Empty text="Nenhum trecho down na rede" />
-          </ul>
-        )}
+        <PanelHead
+          title="Trechos down"
+          count={down}
+          hint="Zabbix"
+          action={<ExpandButton onClick={() => setExpanded(true)} />}
+        />
+        <TrechoGrid trechos={snap.trechos} locs={snap.localities} now={now} />
         <Resolved list={snap.resolved} locs={snap.localities} />
       </section>
+      <AnimatePresence>
+        {expanded && <TrechosFull snap={snap} now={now} onClose={() => setExpanded(false)} />}
+      </AnimatePresence>
 
       {/* ── KPIs ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -274,26 +273,62 @@ const rowMotion = (i: number) => ({
   exit: { opacity: 0, x: 10 },
 });
 
+/* grid of segment tiles (home panel and the expanded view) */
+function TrechoGrid({ trechos, locs, now, big = false }: { trechos: Trecho[]; locs: Record<string, Locality>; now: number; big?: boolean }) {
+  if (!trechos.length)
+    return (
+      <ul className={big ? "mt-6" : "mt-3"}>
+        <Empty text="Nenhum trecho down na rede" />
+      </ul>
+    );
+  return (
+    <ul
+      className={cn(
+        "grid gap-2.5",
+        big ? "mt-6 grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-3" : "mt-3 grid-cols-[repeat(auto-fill,minmax(210px,1fr))]",
+      )}
+    >
+      <AnimatePresence initial={false}>
+        {trechos.map((t, i) => (
+          <TrechoTile key={t.key} t={t} locs={locs} now={now} i={i} big={big} />
+        ))}
+      </AnimatePresence>
+    </ul>
+  );
+}
+
 /* one segment as a compact tile: both ends, since when, for how long.
-   The technical detail (codes, interfaces, hosts) is in the tooltip. */
-function TrechoTile({ t, locs, now, i }: { t: Trecho; locs: Record<string, Locality>; now: number; i: number }) {
+   Hovering shows the Zabbix trigger(s) — several links between the same
+   two cities (Fortaleza × Natal…) only differ there. */
+function TrechoTile({ t, locs, now, i, big }: { t: Trecho; locs: Record<string, Locality>; now: number; i: number; big: boolean }) {
   const sameSite = !!(t.a && t.b && t.a.key === t.b.key);
-  const codes = t.a && t.b ? `${t.a.key} × ${t.b.key}` : (t.a?.key ?? t.events[0].host);
-  const detail = [
-    codes,
-    ...t.events.map((e) => `${e.host} — ${[e.iface, e.speed].filter(Boolean).join(" · ") || e.trigger}`),
-  ].join("\n");
+  const ref = useRef<HTMLLIElement>(null);
+  const [hover, setHover] = useState(false);
+  const links = t.events.length;
   return (
     <motion.li
+      ref={ref}
       layout
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1, transition: { delay: 0.03 * i } }}
       exit={{ opacity: 0, scale: 0.94 }}
-      title={detail}
-      className="relative flex flex-col gap-2 overflow-hidden rounded-xl border border-[#dc2626]/25 bg-[#dc2626]/[.045] p-3 pt-3.5 dark:border-[#ff453a]/25 dark:bg-[#ff453a]/[.07]"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className={cn(
+        "relative flex cursor-default flex-col gap-2 rounded-xl border border-[#dc2626]/25 bg-[#dc2626]/[.045] transition-colors hover:border-[#dc2626]/60 hover:bg-[#dc2626]/[.08] dark:border-[#ff453a]/25 dark:bg-[#ff453a]/[.07] dark:hover:border-[#ff453a]/60",
+        big ? "p-4 pt-[18px]" : "p-3 pt-3.5",
+      )}
     >
-      <span className="absolute inset-x-0 top-0 h-[3px] bg-[#dc2626]" aria-hidden="true" />
-      <div className={cn("flex min-w-0 flex-col gap-0.5 text-[13px] leading-tight font-semibold", strong)}>
+      <span className="absolute inset-x-0 top-0 h-[3px] rounded-t-xl bg-[#dc2626]" aria-hidden="true" />
+      {links > 1 && (
+        <span
+          title={`${links} links down neste trecho`}
+          className="absolute top-2 right-2 rounded-full bg-[#dc2626] px-1.5 py-px text-[10px] font-bold text-white tabular-nums"
+        >
+          ×{links}
+        </span>
+      )}
+      <div className={cn("flex min-w-0 flex-col gap-0.5 leading-tight font-semibold", big ? "text-[15px]" : "text-[13px]", links > 1 && "pr-7", strong)}>
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#dc2626] opacity-60" />
@@ -313,16 +348,191 @@ function TrechoTile({ t, locs, now, i }: { t: Trecho; locs: Record<string, Local
           </span>
         )}
       </div>
+      {/* expanded view: the interfaces are always visible, one line per link */
+      big && (
+        <ul className={cn("flex flex-col gap-0.5 font-mono text-[11px]", muted)}>
+          {t.events.map((e) => (
+            <li key={e.id} className="break-all">
+              {e.host.split(" ")[0]} · {[e.iface, e.speed].filter(Boolean).join(" ") || e.trigger}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="mt-auto flex items-end justify-between gap-2">
         <span className={cn("text-[11px] leading-tight", muted)}>
           desde {fmtClock(t.since)}
           {t.acknowledged && <span className="block text-[#16a34a] dark:text-[#30d158]">reconhecido</span>}
         </span>
-        <span className="text-[17px] leading-none font-bold text-[#dc2626] tabular-nums dark:text-[#ff6b61]">
+        <span className={cn("leading-none font-bold text-[#dc2626] tabular-nums dark:text-[#ff6b61]", big ? "text-[20px]" : "text-[17px]")}>
           {fmtDuration(now - Date.parse(t.since))}
         </span>
       </div>
+      <AnimatePresence>{hover && <TrechoTip t={t} anchor={ref} now={now} />}</AnimatePresence>
     </motion.li>
+  );
+}
+
+/* hover card with the raw Zabbix data of each link of the segment. Rendered in a
+   portal (fixed position, kept inside the viewport) so the grid never clips it;
+   inside the browser full screen it goes into the full-screen element. */
+function TrechoTip({ t, anchor, now }: { t: Trecho; anchor: React.RefObject<HTMLLIElement | null>; now: number }) {
+  const tip = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number; below: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const r = anchor.current?.getBoundingClientRect();
+    const w = tip.current?.offsetWidth ?? 360, h = tip.current?.offsetHeight ?? 120;
+    if (!r) return;
+    const x = Math.max(12, Math.min(window.innerWidth - w - 12, r.left + r.width / 2 - w / 2));
+    const below = r.bottom + h + 16 < window.innerHeight || r.top - h - 16 < 0;
+    setPos({ x, y: below ? r.bottom + 8 : r.top - h - 8, below });
+  }, [anchor, t.events.length]);
+  const codes = t.a && t.b ? `${t.a.key} × ${t.b.key}` : (t.a?.key ?? "");
+  return createPortal(
+    <motion.div
+      ref={tip}
+      initial={{ opacity: 0, y: pos?.below === false ? 6 : -6, scale: 0.97 }}
+      animate={{ opacity: pos ? 1 : 0, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.1 } }}
+      transition={{ type: "spring", stiffness: 500, damping: 32 }}
+      style={{ left: pos?.x ?? -9999, top: pos?.y ?? 0 }}
+      className="pointer-events-none fixed z-[300] w-max max-w-[min(440px,calc(100vw-24px))] rounded-xl border border-black/10 bg-white/95 p-3 text-[12px] shadow-[0_10px_40px_rgba(0,0,0,.18)] backdrop-blur-md dark:border-white/10 dark:bg-[#2c2c2e]/95"
+    >
+      {codes && <div className="mb-2 font-mono text-[11px] font-semibold tracking-wide text-[#0649fc] dark:text-[#6b93ff]">{codes}</div>}
+      <ul className="flex flex-col gap-2">
+        {t.events.map((e) => (
+          <li key={e.id} className="flex flex-col gap-0.5 border-l-2 border-[#dc2626] pl-2">
+            <span className={cn("leading-snug font-medium break-words", strong)}>{e.trigger}</span>
+            <span className={cn("font-mono text-[11px] break-all", muted)}>{e.host}</span>
+            <span className={cn("text-[11px]", muted)}>
+              desde {fmtClock(e.start)} · {fmtDuration(now - Date.parse(e.start))}
+              {e.acknowledged && <span className="text-[#16a34a] dark:text-[#30d158]"> · reconhecido</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </motion.div>,
+    document.fullscreenElement ?? document.body,
+  );
+}
+
+/* "expand" button: four corners that spread out on hover */
+function ExpandButton({ onClick }: { onClick: () => void }) {
+  const corners = ["M4 9V4h5", "M15 4h5v5", "M20 15v5h-5", "M9 20H4v-5"];
+  const out = [
+    { x: -1.5, y: -1.5 },
+    { x: 1.5, y: -1.5 },
+    { x: 1.5, y: 1.5 },
+    { x: -1.5, y: 1.5 },
+  ];
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      title="Expandir trechos down (tela cheia)"
+      aria-label="Expandir trechos down"
+      initial="rest"
+      whileHover="hover"
+      whileTap="tap"
+      className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-[#6e6e73] transition-colors hover:bg-[#0649fc]/10 hover:text-[#0649fc] dark:text-[#8e8e93] dark:hover:bg-[#6b93ff]/15 dark:hover:text-[#6b93ff]"
+    >
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        {corners.map((d, k) => (
+          <motion.path
+            key={d}
+            d={d}
+            variants={{
+              rest: { x: 0, y: 0 },
+              hover: { x: [0, out[k].x, out[k].x * 0.6], y: [0, out[k].y, out[k].y * 0.6], transition: { duration: 0.45 } },
+              tap: { x: out[k].x * 1.6, y: out[k].y * 1.6 },
+            }}
+          />
+        ))}
+        <motion.rect
+          x={9.5}
+          y={9.5}
+          width={5}
+          height={5}
+          rx={1}
+          fill="currentColor"
+          stroke="none"
+          variants={{ rest: { scale: 0.6, opacity: 0.5 }, hover: { scale: 1, opacity: 1 }, tap: { scale: 1.3 } }}
+          style={{ transformOrigin: "12px 12px" }}
+        />
+      </svg>
+    </motion.button>
+  );
+}
+
+/* full-screen view of every segment down (browser full screen when allowed);
+   Esc or the X closes it. Keeps refreshing with the dashboard. */
+function TrechosFull({ snap, now, onClose }: { snap: NetworkSnapshot; now: number; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const clock = useNow(1000);
+  useEffect(() => {
+    const el = box.current;
+    let wasFull = false;
+    const onFs = () => {
+      if (document.fullscreenElement === el) wasFull = true;
+      else if (wasFull) onClose();                     /* left the browser full screen (Esc) */
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.fullscreenElement && onClose();
+    document.addEventListener("fullscreenchange", onFs);
+    window.addEventListener("keydown", onKey);
+    el?.requestFullscreen?.().catch(() => {});        /* not allowed → stays as an overlay */
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      window.removeEventListener("keydown", onKey);
+      if (document.fullscreenElement === el) document.exitFullscreen().catch(() => {});
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  const n = snap.trechos.length;
+  return createPortal(
+    <motion.div
+      ref={box}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Trechos down"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.22 }}
+      className="fixed inset-0 z-[280] overflow-y-auto bg-[#f5f5f7] px-5 py-6 sm:px-10 sm:py-8 dark:bg-[#0b0b0d]"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="relative flex h-3 w-3">
+          {n > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#dc2626] opacity-60" />}
+          <span className={cn("relative inline-flex h-3 w-3 rounded-full", n ? "bg-[#dc2626]" : "bg-[#16a34a]")} />
+        </span>
+        <h2 className={cn("text-[22px] font-bold tracking-tight sm:text-[26px]", strong)}>Trechos down</h2>
+        <span
+          className={cn(
+            "rounded-full px-3 py-0.5 text-[16px] font-bold tabular-nums",
+            n ? "bg-[#dc2626] text-white" : "bg-[#16a34a]/15 text-[#16a34a]",
+          )}
+        >
+          {n}
+        </span>
+        <span className={cn("ml-auto text-[13px] tabular-nums", muted)}>
+          {new Date(clock).toLocaleTimeString("pt-BR")} · atualiza a cada {REFRESH_MS / 1000}s
+        </span>
+        <motion.button
+          type="button"
+          onClick={onClose}
+          title="Fechar (Esc)"
+          aria-label="Fechar"
+          whileHover={{ rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[.06] text-[#1d1d1f] hover:bg-black/10 dark:bg-white/10 dark:text-[#f5f5f7] dark:hover:bg-white/15"
+        >
+          <IconX className="h-5 w-5" />
+        </motion.button>
+      </div>
+      <TrechoGrid trechos={snap.trechos} locs={snap.localities} now={now} big />
+    </motion.div>,
+    document.body,
   );
 }
 

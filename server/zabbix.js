@@ -67,6 +67,12 @@ function toISO(ts, date, time, offset) {
   return null;
 }
 
+/* alarms that belong to no dashboard and are dropped on arrival:
+   the core interfaces facing Amazon ("Interface et-0/0/22 - Core: Amazon {SLZ501 - OCARA} down")
+   carry the Leo site code but aren't a Leo circuit nor a segment */
+const DISCARD = [/\bCore:\s*Amazon\b/i];
+const discarded = (ev) => DISCARD.some((re) => re.test(String(ev.trigger || '')));
+
 /* the Zabbix 'Test' button (and some operations) leave macros unresolved, e.g. '{HOST.HOST}' */
 const MACRO = /^{[A-Z0-9_.#$]+}$/;
 
@@ -90,6 +96,10 @@ function handle(body, store) {
   if (!ev.eventId) throw new Error('event_id is required');
   /* nothing to show: Zabbix 'Test' runs (macros unresolved → host and trigger empty) */
   if (!ev.host && !ev.hostName && !ev.trigger) return { ok: true, ignored: 'no host / trigger (test event?)' };
+  if (discarded(ev)) {
+    console.log('zabbix: event ' + ev.eventId + ' host=' + (ev.host || '-') + ' → discarded (' + ev.trigger + ')');
+    return { ok: true, ignored: 'discarded' };
+  }
   const value  = String(b.event_value != null ? b.event_value : b.value).trim();   /* 1 = problem, 0 = recovery */
   const update = String(b.event_update || '0') === '1';
   /* recovery: {EVENT.VALUE} = 0, but also accept a status text ({EVENT.STATUS} = RESOLVED) or any
@@ -223,6 +233,11 @@ function rxHistory(q, store) {
 /* One-off at startup: events stored in "leoalarms" before the split that don't belong
    to Amazon Leo (no site / circuit) move to "netalarms", with their segment parsed. */
 function migrate(store) {
+  /* drop alarms that are discarded now but were stored before the rule existed */
+  ['leoalarms', 'netalarms'].forEach((c) => {
+    const l = store.read(c), keep = l.filter((a) => !discarded(a));
+    if (keep.length !== l.length) { store.write(c, keep); console.log('zabbix: removed ' + (l.length - keep.length) + ' discarded events from ' + c); }
+  });
   const leo = store.read('leoalarms');
   const move = leo.filter((a) => !a.site && !a.circuit);
   if (!move.length) return 0;
