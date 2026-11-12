@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { prefersReducedMotion } from "./season";
 
 /* The three Santas take turns, always starting with all three together:
-   • "trio": the three rise side by side at the bottom center — Santa 3 (the one
+   • "trio": the three rise side by side in the bottom-right corner — Santa 3 (the one
      with glasses) in the middle, a bit taller, the other two leaning in;
    • "peek": Santa 3 (or Santa 1) rises from the bottom-right corner, leans in, says
      something, and ducks back down;
@@ -165,7 +165,7 @@ function Peek({
   );
 }
 
-/* all three together at the bottom center: the sides rise first, then the
+/* all three together in the bottom-right corner (out of the way of the content): the sides rise first, then the
    one with glasses pops up in the middle and talks; they sway a little out of
    step, and sink back together */
 const TRIO = [
@@ -185,7 +185,7 @@ function Trio({ line, onDone, onPop, reduced }: { line: string; onDone: () => vo
     };
   }, [onDone]);
   return (
-    <div className="pointer-events-none fixed bottom-0 left-1/2 z-[245] flex -translate-x-1/2 items-end">
+    <div className="pointer-events-none fixed right-3 bottom-0 z-[245] flex items-end sm:right-5">
       {TRIO.map((t, i) => (
         <motion.div
           key={t.src}

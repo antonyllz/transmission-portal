@@ -685,7 +685,15 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
   const open = active.filter((a) => !dwdmAcked(a));
   const acked = active.filter(dwdmAcked);
   const shown = filter === "ack" ? acked : filter === "all" ? open : open.filter((a) => a.severity === filter);
-  const ack = (id: string, v: boolean) => {
+  const [sel, setSel] = useState<string | null>(null);
+  const ackChip = useRef<HTMLButtonElement>(null);
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const [bump, setBump] = useState(0);
+  const ack = (id: string, v: boolean, from?: DOMRect) => {
+    /* acknowledging from the list: a green copy of the card flies into the chip */
+    const to = ackChip.current?.getBoundingClientRect();
+    if (v && from && to) setFlights((f) => [...f, { id, from, to }]);
+    setSel(null);
     setLocal((l) => ({ ...l, [id]: v ? new Date().toISOString() : null }));
     ackDwdm(id, v)
       .then(() => window.dispatchEvent(new Event("net-refresh")))
@@ -717,14 +725,22 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
             n={open.filter((a) => a.severity === k).length}
           />
         ))}
-        <SevChip ack active={filter === "ack"} onClick={() => setFilter(filter === "ack" ? "all" : "ack")} label="Reconhecidos" n={acked.length} />
+        <SevChip ref={ackChip} bump={bump} ack active={filter === "ack"} onClick={() => setFilter(filter === "ack" ? "all" : "ack")} label="Reconhecidos" n={acked.length} />
         <span className={cn("ml-auto text-[11px]", ok ? muted : "text-[#ea580c]")}>{status}</span>
       </div>
       {shown.length ? (
         <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
           <AnimatePresence initial={false} mode="popLayout">
             {shown.map((a, i) => (
-              <DwdmCard key={a.id} al={a} now={now} i={i} onAck={ack} />
+              <DwdmCard
+                key={a.id}
+                al={a}
+                now={now}
+                i={i}
+                selected={sel === a.id}
+                onSelect={() => setSel(sel === a.id ? null : a.id)}
+                onAck={ack}
+              />
             ))}
           </AnimatePresence>
         </ul>
@@ -746,11 +762,48 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
         </ul>
       )}
       <DwdmResolved list={resolved} />
+      {flights.map((f) => (
+        <AckFlight
+          key={f.id}
+          f={f}
+          onDone={() => {
+            setFlights((l) => l.filter((x) => x.id !== f.id));
+            setBump((b) => b + 1);
+          }}
+        />
+      ))}
     </section>
   );
 }
 
+type Flight = { id: string; from: DOMRect; to: DOMRect };
+/* the acknowledged card, as a green ghost, shrinks and flies into the "Reconhecidos" chip */
+function AckFlight({ f, onDone }: { f: Flight; onDone: () => void }) {
+  return createPortal(
+    <motion.div
+      aria-hidden="true"
+      className="portal-isl pointer-events-none fixed z-[300] flex items-center justify-center overflow-hidden border-2 border-[#16a34a] bg-[#16a34a]/15 text-[#16a34a] shadow-[0_8px_30px_rgba(22,163,74,.35)] backdrop-blur-sm dark:border-[#30d158] dark:bg-[#30d158]/20 dark:text-[#30d158]"
+      initial={{ left: f.from.left, top: f.from.top, width: f.from.width, height: f.from.height, borderRadius: 12, opacity: 1 }}
+      animate={{
+        left: [f.from.left, f.from.left, f.to.left + f.to.width / 2 - 14],
+        top: [f.from.top, f.from.top - 14, f.to.top + f.to.height / 2 - 14],
+        width: [f.from.width, f.from.width * 0.92, 28],
+        height: [f.from.height, f.from.height * 0.92, 28],
+        borderRadius: [12, 18, 999],
+        opacity: [1, 1, 0.9],
+      }}
+      transition={{ duration: 0.75, times: [0, 0.25, 1], ease: [0.5, 0, 0.2, 1] }}
+      onAnimationComplete={onDone}
+    >
+      <IconCheck className="h-4 w-4 shrink-0" stroke={3} />
+    </motion.div>,
+    document.fullscreenElement ?? document.body,
+  );
+}
+
 function SevChip({
+  ref,
+  bump,
   sev,
   ack,
   active,
@@ -758,6 +811,8 @@ function SevChip({
   label,
   n,
 }: {
+  ref?: React.Ref<HTMLButtonElement>;
+  bump?: number;
   sev?: ZbxSeverity;
   ack?: boolean;
   active: boolean;
@@ -768,7 +823,11 @@ function SevChip({
   if (ack) sev = undefined;
   const colored = sev !== undefined || ack;
   return (
-    <button
+    <motion.button
+      ref={ref}
+      key={bump ? `b${bump}` : undefined}
+      animate={bump ? { scale: [1, 1.18, 1] } : undefined}
+      transition={{ duration: 0.4 }}
       type="button"
       onClick={onClick}
       style={ack ? ACK_VARS : sev !== undefined ? sevVars(sev) : undefined}
@@ -785,12 +844,27 @@ function SevChip({
     >
       {ack ? <IconCheck className="h-3.5 w-3.5 text-[var(--sev)]" stroke={3} /> : sev !== undefined && <span className="h-2 w-2 rounded-full bg-[var(--sev)]" />}
       {label} <b className="font-semibold opacity-50">{n}</b>
-    </button>
+    </motion.button>
   );
 }
 
 /* one alarm: the card is tinted with its severity color — or green once acknowledged */
-function DwdmCard({ al, now, i, onAck }: { al: DwdmAlarm; now: number; i: number; onAck: (id: string, ack: boolean) => void }) {
+function DwdmCard({
+  al,
+  now,
+  i,
+  selected,
+  onSelect,
+  onAck,
+}: {
+  al: DwdmAlarm;
+  now: number;
+  i: number;
+  selected: boolean;
+  onSelect: () => void;
+  onAck: (id: string, ack: boolean, from?: DOMRect) => void;
+}) {
+  const ref = useRef<HTMLLIElement>(null);
   const sev = sevOf(al.severity);
   const acked = dwdmAcked(al);
   const hot = al.severity >= 4 && !acked;
@@ -799,11 +873,15 @@ function DwdmCard({ al, now, i, onAck }: { al: DwdmAlarm; now: number; i: number
       layout
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1, transition: { delay: 0.03 * i } }}
-      exit={{ opacity: 0, scale: 0.9, x: 24, transition: { duration: 0.28 } }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.18 } }}
+      ref={ref}
+      onClick={acked ? undefined : onSelect}
       title={[al.trigger, al.host, al.opdata].filter(Boolean).join("\n")}
       style={acked ? ACK_VARS : sevVars(al.severity)}
       className={cn(
         SEV_C,
+        !acked && "cursor-pointer",
+        selected && "ring-2 ring-[var(--sev)] ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c1e]",
         "relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--sev)_32%,transparent)] bg-[color-mix(in_srgb,var(--sev)_6%,transparent)] p-3 pt-3.5 transition-colors hover:border-[color-mix(in_srgb,var(--sev)_65%,transparent)] hover:bg-[color-mix(in_srgb,var(--sev)_10%,transparent)]",
       )}
     >
@@ -831,11 +909,16 @@ function DwdmCard({ al, now, i, onAck }: { al: DwdmAlarm; now: number; i: number
         )}
         <span className="ml-auto">
           {!acked ? (
-            <AckButton onAck={() => onAck(al.id, true)} />
+            <AnimatePresence>
+              {selected && <AckButton onAck={() => onAck(al.id, true, ref.current?.getBoundingClientRect())} />}
+            </AnimatePresence>
           ) : al.ackAt && !al.acknowledged ? (
             <button
               type="button"
-              onClick={() => onAck(al.id, false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAck(al.id, false);
+              }}
               title={`Reconhecido às ${fmtClock(al.ackAt)} — clique para desfazer`}
               className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium hover:bg-black/[.05] dark:hover:bg-white/10", muted)}
             >
@@ -860,16 +943,16 @@ function DwdmCard({ al, now, i, onAck }: { al: DwdmAlarm; now: number; i: number
   );
 }
 
-/* green "Reconhecer" button: a light sweeps across it now and then; on click the
-   label gives way to a check that draws itself, a ring ripples out, and only then
-   the alarm moves to "Reconhecidos" */
+/* green round "acknowledge" button (icon only), shown when the card is selected:
+   it pops in with a soft pulse; on click a check draws itself, a ring ripples
+   out, and then the card flies to "Reconhecidos" */
 function AckButton({ onAck }: { onAck: () => void }) {
   const [done, setDone] = useState(false);
   const cb = useRef(onAck);
   cb.current = onAck;
   useEffect(() => {
     if (!done) return;
-    const t = setTimeout(() => cb.current(), 650);
+    const t = setTimeout(() => cb.current(), 420);
     return () => clearTimeout(t);
   }, [done]);
   return (
@@ -882,43 +965,31 @@ function AckButton({ onAck }: { onAck: () => void }) {
       disabled={done}
       aria-label="Reconhecer alarme"
       title="Reconhecer alarme"
-      whileHover={done ? undefined : { scale: 1.06 }}
-      whileTap={done ? undefined : { scale: 0.92 }}
-      layout
-      className={cn(
-        "relative flex h-7 items-center justify-center overflow-hidden rounded-full bg-[#16a34a] text-[11px] font-semibold text-white shadow-[0_2px_8px_rgba(22,163,74,.35)] dark:bg-[#30d158] dark:text-[#0b2e16]",
-        done ? "w-7" : "gap-1 px-2.5",
-      )}
+      initial={{ scale: 0, rotate: -90 }}
+      animate={{ scale: 1, rotate: 0 }}
+      exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
+      transition={{ type: "spring", stiffness: 520, damping: 22 }}
+      whileHover={done ? undefined : { scale: 1.12 }}
+      whileTap={done ? undefined : { scale: 0.88 }}
+      className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[#16a34a] text-white shadow-[0_2px_10px_rgba(22,163,74,.45)] dark:bg-[#30d158] dark:text-[#0b2e16]"
     >
-      {/* light sweep */}
-      {!done && (
-        <motion.span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent"
-          initial={{ x: "-150%" }}
-          animate={{ x: "250%" }}
-          transition={{ duration: 1.1, repeat: Infinity, repeatDelay: 2.6, ease: "easeInOut" }}
-        />
-      )}
-      {/* ripple */}
-      {done && (
-        <motion.span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-full border-2 border-[#16a34a] dark:border-[#30d158]"
-          initial={{ scale: 1, opacity: 0.9 }}
-          animate={{ scale: 2.4, opacity: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        />
-      )}
+      {/* soft pulse while waiting, ripple on click */}
+      <motion.span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-full border-2 border-[#16a34a] dark:border-[#30d158]"
+        initial={{ scale: 1, opacity: 0.8 }}
+        animate={done ? { scale: 2.6, opacity: 0 } : { scale: [1, 1.7], opacity: [0.7, 0] }}
+        transition={done ? { duration: 0.45, ease: "easeOut" } : { duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+        key={done ? "ripple" : "pulse"}
+      />
       <svg viewBox="0 0 24 24" className="relative h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
         <motion.path
           d="M5 12.5l4.5 4.5L19 7.5"
           initial={false}
           animate={{ pathLength: done ? [0, 1] : 1 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         />
       </svg>
-      {!done && <span className="relative">Reconhecer</span>}
     </motion.button>
   );
 }
