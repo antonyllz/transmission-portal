@@ -10,8 +10,9 @@ var LDB_SITES = {
   CPV501: { name: 'CPV501', place: 'Sanharó, PE' }
 };
 var LDB_CIRCUITS = [
-  { id: 'RJOOCR964161',    site: 'SLZ501', pop: 'Equinix RJ2' },
+  /* order shown on the dashboard: SP4 first, then RJ2, in every site */
   { id: 'SPOOCR964174',    site: 'SLZ501', pop: 'Equinix SP4' },
+  { id: 'RJOOCR964161',    site: 'SLZ501', pop: 'Equinix RJ2' },
   { id: '21-90090-252671', site: 'CPV501', pop: 'Equinix SP4' },
   { id: '21-90090-252668', site: 'CPV501', pop: 'Equinix RJ2' }
 ];
@@ -22,13 +23,16 @@ var ldb = { data: null, site: 'SLZ501', range: 30, tz: 'UTC', timer: 0, tick: 0 
 function openLeoDash() {
   ldb.range = 30; ldb.tz = 'UTC';   /* defaults every time the dashboard is opened */
   showPage('pg-leo-dash');
+  ldbIf.hours = 24; ldbIf.sig = '';
   ldbRender();
   ldbLoad();
+  ldbIfLoad();
   clearInterval(ldb.timer); clearInterval(ldb.tick);
   ldb.timer = setInterval(function() {
     var pg = document.getElementById('pg-leo-dash');
     if (!pg || !pg.classList.contains('active')) { clearInterval(ldb.timer); clearInterval(ldb.tick); return; }
     ldbLoad();
+    ldbIfLoad();
   }, 10000);
   ldb.tick = setInterval(ldbTick, 1000);
 }
@@ -111,8 +115,10 @@ function ldbRender() {
       + '<div class="ldb-site-head"><h3>' + sid + ' <span>— ' + LDB_SITES[sid].place + '</span></h3>'
       +   '<span class="ldb-site-sum ' + sCls + '"><i></i>' + summary + '</span></div>'
       + cs.map(function(c, i) { return ldbCircuit(c, states[i]); }).join('')
+      + '<div class="ldb-path-slot" data-site="' + sid + '"></div>'
       + '</section>';
   }).join('');
+  ldbPathRender();      /* cross-connect monitoring of the site, if any */
   ldbStamp();
 }
 
@@ -325,3 +331,207 @@ function ldbRxDraw() {
   hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true });
   hit.addEventListener('mouseleave', out);
 }
+
+/* ═══════════════════════════════
+   Cross-connect monitoring (GET /api/leo/ifmon — server/ifmon.js).
+   A circuit that crosses one of our routers through a CCC is shown as a path:
+     Equinix SP4 ─ Eletronet ─ [et-0/0/27] ═ router (CCC) ═ [et-0/0/28] ─ SLZ501
+   Each side has its own state, flaps and downtime, so a flap can be pinned to
+   the Eletronet side or to the Amazon Leo side. Rendered inside the site.
+   ═══════════════════════════════ */
+var ldbIf = { data: null, hours: 24, sig: '' };
+
+function ldbIfLoad() {
+  var h = ldbIf.hours;
+  _apiGet('/leo/ifmon?hours=' + h).then(function(d) {
+    if (ldbIf.hours !== h) return;
+    var sig = h + JSON.stringify(d.paths.map(function(p) { return p.ports.map(function(x) { return [x.polledAt, x.status, x.ok, x.events.length]; }); }));
+    ldbIf.data = d;
+    if (sig !== ldbIf.sig) { ldbIf.sig = sig; ldbPathRender(); }
+  }).catch(function() { /* keeps the last data */ });
+}
+function ldbIfSet(h) { ldbIf.hours = h; ldbIf.sig = ''; ldbPathRender(); ldbIfLoad(); }
+
+function ldbBps(v) {
+  if (v === null || v === undefined) return '—';
+  var u = [['Tbps', 1e12], ['Gbps', 1e9], ['Mbps', 1e6], ['kbps', 1e3]].filter(function(x) { return v >= x[1]; })[0];
+  return u ? (v / u[1]).toFixed(v / u[1] >= 100 ? 0 : v / u[1] >= 10 ? 1 : 2) + '<small> ' + u[0] + '</small>' : Math.round(v) + '<small> bps</small>';
+}
+function ldbAxisBps(v) {
+  if (!v) return '0';
+  var u = [['T', 1e12], ['G', 1e9], ['M', 1e6], ['k', 1e3]].filter(function(x) { return v >= x[1]; })[0] || ['', 1];
+  return +(v / u[1]).toFixed(2) + ' ' + u[0] + 'bps';
+}
+function ldbMin(ms) { var m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h ' + m % 60 + 'm'; }
+function ldbRangeLabel() { return ldbIf.hours === 168 ? '7 days' : ldbIf.hours + 'h'; }
+
+/* down intervals of a port in the window, from the 1-min samples (+ open one if down now) */
+function ldbPortDown(pt, from, to) {
+  var out = [], s = null;
+  (pt.points || []).forEach(function(p) {
+    var t = new Date(p[0]).getTime();
+    if (p[3] === 0 && s === null) s = t;
+    else if (p[3] === 1 && s !== null) { out.push([s, t]); s = null; }
+  });
+  if (s !== null) out.push([s, to]);
+  return out.filter(function(x) { return x[1] > from; });
+}
+function ldbPortState(pt) { return !pt.status ? 'nodata' : pt.status === 'up' ? 'up' : 'down'; }
+
+function ldbPathRender() {
+  var d = ldbIf.data;
+  document.querySelectorAll('#ldb-body .ldb-path-slot').forEach(function(slot) {
+    var paths = d ? d.paths.filter(function(p) { return p.site === slot.dataset.site; }) : [];
+    slot.innerHTML = paths.map(ldbPathCard).join('');
+    paths.forEach(function(p) { ldbPathChart(p); });
+  });
+}
+
+function ldbPathCard(p) {
+  var to = Date.now(), from = to - ldbIf.hours * 3600000;
+  var a = p.ports[0], b = p.ports[1];
+  var sides = p.ports.map(function(pt) {
+    var st = ldbPortState(pt), downs = ldbPortDown(pt, from, to);
+    var flaps = pt.events.filter(function(e) { return e.type === 'flap'; }).length;
+    var drops = pt.events.filter(function(e) { return e.type === 'down'; }).length;
+    var dt = downs.reduce(function(s, x) { return s + Math.min(x[1], to) - Math.max(x[0], from); }, 0);
+    return { pt: pt, st: st, downs: downs, flaps: flaps, drops: drops, downtime: dt };
+  });
+  var worst = sides.some(function(s) { return s.st === 'down'; }) ? 'down' : sides.every(function(s) { return s.st === 'nodata'; }) ? 'nodata' : sides.some(function(s) { return s.flaps + s.drops; }) ? 'warn' : 'up';
+  var summary = worst === 'down' ? 'Down on the ' + sides.filter(function(s) { return s.st === 'down'; }).map(function(s) { return s.pt.side; }).join(' and ') + ' side'
+    : worst === 'warn' ? 'Both sides up · ' + (sides[0].flaps + sides[0].drops + sides[1].flaps + sides[1].drops) + ' transition(s) in ' + ldbRangeLabel()
+    : worst === 'up' ? 'Both sides up · no flaps in ' + ldbRangeLabel() : 'Awaiting data';
+  var stale = p.ports.some(function(x) { return !x.ok; });
+
+  /* the path drawing */
+  function port(s) {
+    return '<div class="ldb-pd-port ' + s.st + '">'
+      + '<span class="ldb-pd-pill"><i></i>' + esc(s.pt.ifName) + '</span>'
+      + '<span class="ldb-pd-side">' + esc(s.pt.side) + ' side</span>'
+      + (s.pt.statusSince ? '<span class="ldb-pd-since">' + (s.st === 'up' ? 'up ' : s.st === 'down' ? 'down ' : '') + '<span data-ldur="' + s.pt.statusSince + '">' + ldbDur(s.pt.statusSince) + '</span></span>' : '')
+      + '</div>';
+  }
+  function link(s, fwd, back) {
+    return '<div class="ldb-pd-link ' + s.st + '"><span class="ldb-pd-rate fwd">' + fwd + '</span><span class="ldb-pd-line"></span><span class="ldb-pd-rate back">' + back + '</span></div>';
+  }
+  var diagram = '<div class="ldb-pd">'
+    + '<div class="ldb-pd-end"><b>' + esc(a.to) + '</b><span>via ' + esc(a.side) + '</span></div>'
+    + link(sides[0], '→ ' + ldbBps(a.inBps), '← ' + ldbBps(a.outBps))
+    + port(sides[0])
+    + '<div class="ldb-pd-router"><b>CCC</b><span>' + esc(p.router) + '</span><span>' + esc(p.place) + '</span></div>'
+    + port(sides[1])
+    + link(sides[1], '→ ' + ldbBps(b.outBps), '← ' + ldbBps(b.inBps))
+    + '<div class="ldb-pd-end"><b>' + esc(b.to) + '</b><span>' + esc(b.side) + '</span></div>'
+    + '</div>';
+
+  /* per side: state, flaps, downtime */
+  var sideCards = '<div class="ldb-pd-sides">' + sides.map(function(s) {
+    return '<div class="ldb-pd-sc ' + s.st + '"><div class="ldb-pd-sc-h"><span class="ldb-st-dot"></span><b>' + esc(s.pt.side) + ' side</b><code>' + esc(s.pt.ifName) + '</code>'
+      + '<em>' + (s.st === 'up' ? 'UP' : s.st === 'down' ? 'DOWN' : '—') + '</em></div>'
+      + '<div class="ldb-pd-sc-g">'
+      +   '<div><span>Flaps</span><b>' + s.flaps + '</b></div>'
+      +   '<div><span>Down events</span><b>' + s.drops + '</b></div>'
+      +   '<div><span>Downtime</span><b>' + (s.downtime ? ldbMin(s.downtime) : '0') + '</b></div>'
+      +   '<div><span>Last change</span><b>' + (s.pt.lastChangeAt ? ldbFmt(s.pt.lastChangeAt).slice(0, 12) : '—') + '</b></div>'
+      + '</div></div>';
+  }).join('') + '</div>';
+
+  /* timeline: one row per side, down periods + flap ticks */
+  var X = function(t) { return ((t - from) / (to - from) * 100).toFixed(3); };
+  var tl = '<div class="ldb-pd-tl">' + sides.map(function(s) {
+    return '<div class="ldb-pd-tl-row"><span class="ldb-pd-tl-l">' + esc(s.pt.side) + '</span><div class="ldb-pd-tl-bar">'
+      + s.downs.map(function(x) { var l = Math.max(from, x[0]); return '<i class="dn" style="left:' + X(l) + '%;width:' + Math.max(.3, (Math.min(to, x[1]) - l) / (to - from) * 100).toFixed(3) + '%" title="Down ' + ldbFmt(new Date(l).toISOString()) + '"></i>'; }).join('')
+      + s.pt.events.filter(function(e) { return e.type === 'flap'; }).map(function(e) { return '<i class="fl" style="left:' + X(new Date(e.at).getTime()) + '%" title="Flap ' + ldbFmt(e.at) + ' ' + ldb.tz + '"></i>'; }).join('')
+      + '</div></div>';
+  }).join('') + '<div class="ldb-tl-axis ldb-pd-axis"><span>' + ldbRangeLabel() + ' ago</span><span>Now</span></div></div>';
+
+  /* event table, both sides */
+  var evs = [];
+  sides.forEach(function(s) { s.pt.events.forEach(function(e) { evs.push({ e: e, s: s }); }); });
+  evs.sort(function(x, y) { return String(y.e.at).localeCompare(String(x.e.at)); });
+  var rows = evs.length ? evs.slice(0, 100).map(function(x) {
+    var e = x.e, tag = e.type === 'down' ? '<span class="ldb-tag down">DOWN</span>' : e.type === 'up' ? '<span class="ldb-tag ok">UP</span>' : '<span class="ldb-tag warn">FLAP</span>';
+    return '<tr><td>' + tag + '</td><td>' + esc(x.s.pt.side) + ' <code>' + esc(x.s.pt.ifName) + '</code></td><td class="ldb-num">' + ldbFmt(e.at) + '</td><td class="ldb-num">'
+      + (e.type === 'up' && e.dur !== undefined ? 'was down ' + ldbDur(new Date(Date.now() - e.dur).toISOString()) : e.type === 'flap' ? '< 1 min' : '') + '</td></tr>';
+  }).join('') : '<tr><td colspan="4" class="ldb-none">No flaps in this period</td></tr>';
+
+  return '<article class="ldb-c ldb-path ' + (worst === 'warn' ? 'warn' : worst) + '">'
+    + '<header class="ldb-c-head ldb-path-head"><div><div class="ldb-c-kicker">Cross-connect monitoring · SNMP every minute</div>'
+    +   '<div class="ldb-c-title">' + esc(p.title) + '<code>' + esc(p.circuit) + '</code></div>'
+    +   '<div class="ldb-path-sum ' + worst + '"><i></i>' + summary + (stale ? ' · <b>no SNMP answer since ' + ldbFmt(p.ports[0].failedAt || new Date().toISOString()).slice(7, 12) + '</b>' : '') + '</div></div>'
+    +   '<div class="ldb-seg">' + [[6, '6h'], [24, '24h'], [168, '7d']].map(function(o) {
+          return '<button class="' + (ldbIf.hours === o[0] ? 'sel' : '') + '" onclick="ldbIfSet(' + o[0] + ')">' + o[1] + '</button>';
+        }).join('') + '</div>'
+    + '</header>'
+    + '<div class="ldb-path-body">' + diagram + sideCards + tl
+    +   '<div class="ldb-path-cols"><div class="ldb-path-chart" id="ldb-pc-' + p.id + '"></div>'
+    +   '<div class="ldb-table"><table><thead><tr><th>Event</th><th>Side</th><th>Time (' + ldb.tz + ')</th><th>Duration</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
+    + '</div></article>';
+}
+
+/* traffic through the cross-connect: toward SLZ501 (in on the Eletronet port) and toward SP4 (in on the Amazon port) */
+function ldbPathChart(p) {
+  var body = document.getElementById('ldb-pc-' + p.id);
+  if (!body) return;
+  var a = p.ports[0], b = p.ports[1], to = Date.now(), from = to - ldbIf.hours * 3600000;
+  var series = [
+    { name: 'Toward ' + b.to, cls: 'if-in', pts: (a.points || []).map(function(x) { return [x[0], x[1]]; }) },
+    { name: 'Toward ' + a.to, cls: 'if-out', pts: (b.points || []).map(function(x) { return [x[0], x[1]]; }) }
+  ];
+  if (!series.some(function(s) { return s.pts.some(function(x) { return x[1] !== null; }); })) {
+    body.innerHTML = '<div class="ldb-rxm-empty">' + ((a.points || []).length ? 'Collecting traffic — needs two readings' : 'No readings yet — the portal reads the router every minute') + '</div>';
+    return;
+  }
+  var W = Math.max(260, body.clientWidth), H = 210, L = 66, Rm = 10, T = 10, B = 24, pw = W - L - Rm, ph = H - T - B;
+  var hi = 0;
+  series.forEach(function(s) { s.pts.forEach(function(x) { hi = Math.max(hi, x[1] || 0); }); });
+  var nice = [1, 2, 2.5, 5, 10], mag = Math.pow(10, Math.floor(Math.log10(Math.max(hi, 1e3)))), top = 10 * mag;
+  for (var k = 0; k < nice.length; k++) if (nice[k] * mag >= hi * 1.1) { top = nice[k] * mag; break; }
+  var X = function(t) { return L + (t - from) / (to - from) * pw; }, Y = function(v) { return T + (1 - v / top) * ph; };
+  var grid = '';
+  for (var g = 0; g <= 4; g++) {
+    var v = top * g / 4;
+    grid += '<line class="g" x1="' + L + '" x2="' + (W - Rm) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text class="ya" x="' + (L - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '">' + ldbAxisBps(v) + '</text>';
+  }
+  var nT = Math.max(2, Math.min(6, Math.floor(pw / 110))), xt = '';
+  for (var n = 0; n <= nT; n++) {
+    var t = from + (to - from) * n / nT, lab = ldbFmt(new Date(t).toISOString());
+    xt += '<text class="xa" x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (n === 0 ? 'start' : n === nT ? 'end' : 'middle') + '">' + (ldbIf.hours > 24 ? lab.slice(0, 6) : lab.slice(7, 12)) + '</text>';
+  }
+  var bands = ldbPortDown(a, from, to).concat(ldbPortDown(b, from, to)).map(function(x) {
+    var l = Math.max(L, X(x[0])), r = Math.min(W - Rm, X(x[1]));
+    return '<rect class="lossb" x="' + l.toFixed(1) + '" y="' + T + '" width="' + Math.max(2, r - l).toFixed(1) + '" height="' + ph + '"/>';
+  }).join('');
+  function line(pts) {
+    var d = '', pen = false;
+    pts.forEach(function(x) { if (x[1] === null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(new Date(x[0]).getTime()).toFixed(1) + ' ' + Y(x[1]).toFixed(1); pen = true; });
+    return d;
+  }
+  var l0 = line(series[0].pts);
+  var area = l0.split('M').filter(Boolean).map(function(seg) {
+    var xs = seg.split('L'), f = xs[0].split(' ')[0], e = xs[xs.length - 1].split(' ')[0];
+    return 'M' + f + ' ' + (T + ph) + 'L' + seg + 'L' + e + ' ' + (T + ph) + 'Z';
+  }).join('');
+  body.innerHTML = '<div class="ldb-rxm-legend">' + series.map(function(s) { return '<span><i class="' + (s.cls === 'if-in' ? 'in' : 'out') + '"></i>' + esc(s.name) + '</span>'; }).join('') + (bands ? '<span><i class="ls"></i>Port down</span>' : '') + '</div>'
+    + '<div class="ldb-rxm-chart"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
+    + grid + bands + '<path class="if-area" d="' + area + '"/><path class="if-in" d="' + l0 + '"/><path class="if-out" d="' + line(series[1].pts) + '"/>' + xt
+    + '<line class="xh" y1="' + T + '" y2="' + (T + ph) + '" style="display:none"/><rect class="hit" x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '"/></svg>'
+    + '<div class="ldb-rxm-tip"></div></div>';
+  var svg = body.querySelector('svg'), hit = svg.querySelector('.hit'), xh = svg.querySelector('.xh'), tip = body.querySelector('.ldb-rxm-tip');
+  function near(pts, t) { var k = -1, best = Infinity; for (var j = 0; j < pts.length; j++) { var dd = Math.abs(new Date(pts[j][0]).getTime() - t); if (dd < best) { best = dd; k = j; } } return k < 0 ? null : pts[k]; }
+  function move(e) {
+    var r = svg.getBoundingClientRect(), mx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left, t = from + (mx - L) / pw * (to - from);
+    var p0 = near(series[0].pts, t), p1 = near(series[1].pts, t); if (!p0) return;
+    var x = X(new Date(p0[0]).getTime());
+    xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = '';
+    tip.innerHTML = '<em>' + ldbFmt(p0[0]) + ' ' + ldb.tz + '</em><b><i class="ldb-if-dot in"></i>' + ldbBps(p0[1]) + ' <small>→ ' + esc(b.to) + '</small></b>'
+      + (p1 ? '<b><i class="ldb-if-dot out"></i>' + ldbBps(p1[1]) + ' <small>→ ' + esc(a.to) + '</small></b>' : '');
+    tip.style.display = 'block';
+    tip.style.left = Math.min(Math.max(x - tip.offsetWidth / 2, 0), W - tip.offsetWidth) + 'px';
+    tip.style.top = '0px';
+  }
+  function out() { xh.style.display = 'none'; tip.style.display = 'none'; }
+  hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true });
+  hit.addEventListener('mouseleave', out);
+}
+window.addEventListener('resize', function() { if (ldbIf.data) ldbIf.data.paths.forEach(ldbPathChart); });

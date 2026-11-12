@@ -29,6 +29,7 @@ const FILES = {
   netalarms:  path.join(DATA_DIR, 'netalarms.json'),     /* Zabbix route/segment events (home "Eventos na rede") */
   netzbxmeta: path.join(DATA_DIR, 'netzbxmeta.json'),
   dwdmalarms: path.join(DATA_DIR, 'dwdmalarms.json'),
+  ifmon: path.join(DATA_DIR, 'ifmon.json'),             /* SNMP interface monitor (status + traffic history) */
   janelas: path.join(DATA_DIR, 'janelas.json'),         /* maintenance windows, synced from the Excel sheet */
   janelasmeta: path.join(DATA_DIR, 'janelasmeta.json'),
   dwdmzbxmeta: path.join(DATA_DIR, 'dwdmzbxmeta.json'),
@@ -53,6 +54,7 @@ const ZBX_TOKEN = zabbix.loadToken(DATA_DIR);
 const store     = { read: readCollection, write: writeCollection };
 const netevents  = require('./netevents');
 const padtec     = require('./padtec');
+const ifmon      = require('./ifmon');
 const leofeed    = require('./leofeed');
 const janelas    = require('./janelas');
 const FEED_TOKEN = leofeed.loadFeedToken(DATA_DIR);
@@ -108,6 +110,8 @@ const server = http.createServer((req, res) => {
     } catch (e) { send(res, 400, { error: e.message }); }
     return;
   }
+
+  if (url.pathname === '/api/leo/ifmon' && req.method === 'GET') { send(res, 200, ifmon.response(Object.fromEntries(url.searchParams), store)); return; }
 
   if (url.pathname === '/api/leo/rx') {
     if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
@@ -184,5 +188,6 @@ server.listen(PORT, '127.0.0.1', () => {
   const moved = zabbix.migrate(store);
   if (moved) console.log('moved ' + moved + ' non-Amazon-Leo Zabbix events to netalarms');
   require('./nms').start(DATA_DIR, (body) => zabbix.metric(body, store));   /* Amazon Leo Rx from the NMS */
+  ifmon.start(DATA_DIR, store);                                             /* SNMP status/traffic for the Amazon Leo dashboard */
   padtec.start(DATA_DIR, store);                                            /* Padtec alarms for the home dashboard */
 });

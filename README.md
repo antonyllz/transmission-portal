@@ -71,6 +71,15 @@ collection), which also lists codes seen in alarms that have no name yet. Padtec
 NMS API (`server/padtec.js`, every 60 s, same `NMS_TOKEN` / `data/nms-token.txt` as the Rx collector):
 active alarms whose name has "Via A"/"Via B" or "Falha interna de alimentação" (energia), "Temperatura" or "Tempo de resposta".
 
+**Cross-connect monitoring (Amazon Leo dashboard):** `server/ifmon.js` reads, over SNMP v2c every
+minute (no dependencies, `server/snmp.js`), the two router ports of a CCC that carries a Leo circuit.
+SLZ501 ↔ Equinix SP4 crosses `PB-CGE-A01-BKB-RT-001`: et-0/0/27 faces Eletronet (SP4), et-0/0/28 faces
+Amazon Leo SLZ501 — so a flap is pinned to one side. Per port: ifOper/AdminStatus, ifHCIn/OutOctets
+(→ bps), ifHighSpeed, ifAlias and ifLastChange + sysUpTime (exact transition time; a flap shorter than
+the poll is still recorded). ifIndex is found by ifName. Paths are listed in `PATHS`; 7 days of history
+in the `ifmon` collection, `GET /api/leo/ifmon?hours=6|24|168`; shown inside the site on the dashboard.
+The community comes from env `SNMP_COMMUNITY` or `data/snmp-community.txt` (never committed).
+
 **DWDM Padtec alarms:** every Zabbix event of a host in the host group **PADTEC** goes to the
 `dwdmalarms` collection (`GET /api/network/dwdm`) instead of trechos / Amazon Leo, and is shown in
 "Alarmes DWDM Padtec" with one color per severity. The Zabbix media type must send the parameter
