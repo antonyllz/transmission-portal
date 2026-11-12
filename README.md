@@ -76,6 +76,13 @@ active alarms whose name has "Via A"/"Via B" or "Falha interna de alimentação"
 "Alarmes DWDM Padtec" with one color per severity. The Zabbix media type must send the parameter
 `host_groups` = `{TRIGGER.HOSTGROUP.NAME}` (the group name can be changed with env `DWDM_GROUP`).
 
+**Janelas programadas** (`#/janelas`): maintenance windows from the Excel sheet
+`Janelas_Programadas.xlsx` (OneDrive). A Power Automate flow lists the rows of the sheet's table
+(Excel Online Business) and sends each one through the standard RSS connector:
+`GET /api/janelas/sync?token=<feed token>&run=<run id>&row=<row JSON>`, then
+`…&run=<run id>&end=1&count=<rows>` — when every row arrived, windows no longer in the sheet are
+removed (`server/janelas.js`, same token as the Amazon Leo feed). Times are read as Brasília time.
+
 **Demands:** the notepads read and write the same data as before (`dmdGetAll`/`dmdSave` in
 `assets/js/database.js`, synced to `/api/demands` and polled every 8s); only the rendering moved to React.
 

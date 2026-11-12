@@ -96,3 +96,17 @@ export const WarehouseIcon = () => {
     </svg>
   );
 };
+
+/** Janelas programadas — a calendar whose scheduled slot fills in while the
+    little clock's hand sweeps around. */
+export const WindowIcon = () => (
+  <svg {...base}>
+    <path d="M20 11V6.5A1.5 1.5 0 0 0 18.5 5h-13A1.5 1.5 0 0 0 4 6.5v12A1.5 1.5 0 0 0 5.5 20H11" />
+    <path className="di-ring" d="M8 3v4" />
+    <path className="di-ring di-ring2" d="M16 3v4" />
+    <path d="M4 10h16" />
+    <rect className="di-slot" x="7" y="12.6" width="5" height="3" rx=".6" fill="currentColor" stroke="none" />
+    <circle cx="17.5" cy="17.5" r="4" />
+    <path className="di-hand" d="M17.5 15.6v1.9l1.3.9" />
+  </svg>
+);

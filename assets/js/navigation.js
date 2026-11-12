@@ -74,6 +74,7 @@ var PAGE_ROUTES = {
   'pg-lambdas':     { path: 'lambdas',                 title: 'Lambdas' },
   'pg-alm':         { path: 'almoxarifado',            title: 'Almoxarifado' },
   'pg-localidades': { path: 'localidades',             title: 'Localidades' },
+  'pg-janelas':     { path: 'janelas',                 title: 'Janelas programadas' },
   'pg-leo-dash':    { path: 'amazon-leo/dashboard',    title: 'Dashboard Amazon Leo' }
 };
 
@@ -90,6 +91,7 @@ var ROUTE_OPENERS = {
   'lambdas':                 function() { openLambdas(); },
   'almoxarifado':            function() { openAlm(); },
   'localidades':             function() { showPage('pg-localidades'); },
+  'janelas':                 function() { showPage('pg-janelas'); },
   'amazon-leo/dashboard':    function() { openLeoDash(); }
 };
 

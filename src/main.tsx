@@ -7,6 +7,7 @@ import { PortalDock } from "@/components/portal-dock";
 import { NetworkEventsDashboard } from "@/components/network-events";
 import { DemandsBoard } from "@/components/demands-board";
 import { LocalitiesPage } from "@/components/localities-page";
+import { JanelasPage } from "@/components/janelas-page";
 import { ChristmasTheme, ChristmasToggle } from "@/components/xmas/christmas";
 import "./portal.css";
 
@@ -15,6 +16,7 @@ const ISLANDS: Record<string, ReactNode> = {
   "events-root": <NetworkEventsDashboard />,
   "demands-root": <DemandsBoard />,
   "localities-root": <LocalitiesPage />,
+  "janelas-root": <JanelasPage />,
   "xmas-root": <ChristmasTheme />,
   "xmas-toggle-root": <ChristmasToggle />,
 };

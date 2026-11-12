@@ -29,6 +29,8 @@ const FILES = {
   netalarms:  path.join(DATA_DIR, 'netalarms.json'),     /* Zabbix route/segment events (home "Eventos na rede") */
   netzbxmeta: path.join(DATA_DIR, 'netzbxmeta.json'),
   dwdmalarms: path.join(DATA_DIR, 'dwdmalarms.json'),
+  janelas: path.join(DATA_DIR, 'janelas.json'),         /* maintenance windows, synced from the Excel sheet */
+  janelasmeta: path.join(DATA_DIR, 'janelasmeta.json'),
   dwdmzbxmeta: path.join(DATA_DIR, 'dwdmzbxmeta.json'),
   localities: path.join(DATA_DIR, 'localities.json'),    /* locality codes added in the portal (UF + Anatel code → name) */
   padtecalarms: path.join(DATA_DIR, 'padtecalarms.json'), /* Padtec NMS alarms: energia / temperatura / resposta (padtec.js) */
@@ -52,6 +54,7 @@ const store     = { read: readCollection, write: writeCollection };
 const netevents  = require('./netevents');
 const padtec     = require('./padtec');
 const leofeed    = require('./leofeed');
+const janelas    = require('./janelas');
 const FEED_TOKEN = leofeed.loadFeedToken(DATA_DIR);
 
 function send(res, status, body) {
@@ -95,6 +98,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* RSS for Power Automate: one maintenance window (Excel row) per call, see janelas.js */
+  if (url.pathname === '/api/janelas/sync') {
+    if (!zabbix.sameSecret(url.searchParams.get('token'), FEED_TOKEN)) { send(res, 401, { error: 'Invalid token' }); return; }
+    try {
+      const xml = janelas.sync(Object.fromEntries(url.searchParams), store);
+      res.writeHead(200, { 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(xml);
+    } catch (e) { send(res, 400, { error: e.message }); }
+    return;
+  }
+
   if (url.pathname === '/api/leo/rx') {
     if (req.method !== 'GET') { send(res, 405, { error: 'Use GET' }); return; }
     try { send(res, 200, zabbix.rxHistory(Object.fromEntries(url.searchParams), store)); }
@@ -106,6 +120,7 @@ const server = http.createServer((req, res) => {
   /* route/segment events for the home dashboard + the locality lookup list (internal, read-only) */
   if (url.pathname === '/api/network/events' && req.method === 'GET') { send(res, 200, netevents.eventsResponse(store)); return; }
   if (url.pathname === '/api/network/localities' && req.method === 'GET') { send(res, 200, netevents.localitiesResponse(store)); return; }
+  if (url.pathname === '/api/network/janelas' && req.method === 'GET') { send(res, 200, janelas.response(store)); return; }
   if (url.pathname === '/api/network/dwdm' && req.method === 'GET') { send(res, 200, zabbix.dwdmResponse(store)); return; }
   if (url.pathname === '/api/network/padtec' && req.method === 'GET') { send(res, 200, padtec.response(store)); return; }
 

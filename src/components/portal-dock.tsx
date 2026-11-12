@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FloatingDock, type DockImage, type DockItem } from "@/components/ui/floating-dock";
-import { HomeIcon, LambdaIcon, LoaIcon, RfoIcon, RmaIcon, WarehouseIcon } from "@/components/dock-icons";
+import { HomeIcon, LambdaIcon, LoaIcon, RfoIcon, RmaIcon, WarehouseIcon, WindowIcon } from "@/components/dock-icons";
 
 /* Main navigation of the Transmission Portal. Each `route` is a hash route
    already handled by assets/js/navigation.js (ROUTE_OPENERS).
@@ -11,6 +11,7 @@ type NavItem = { title: string; route: string } & ({ Icon: () => React.JSX.Eleme
 const NAV: NavItem[] = [
   { title: "Home", route: "", Icon: HomeIcon },
   { title: "Almoxarifado", route: "almoxarifado", Icon: WarehouseIcon },
+  { title: "Janelas programadas", route: "janelas", Icon: WindowIcon },
   { title: "RMAs", route: "rmas", Icon: RmaIcon },
   { title: "Lambdas", route: "lambdas", Icon: LambdaIcon },
   { title: "Generate LOA", route: "loa", Icon: LoaIcon },

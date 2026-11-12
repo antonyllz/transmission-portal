@@ -403,7 +403,7 @@ function TrechoTip({ t, anchor, now }: { t: Trecho; anchor: React.RefObject<HTML
       exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.1 } }}
       transition={{ type: "spring", stiffness: 500, damping: 32 }}
       style={{ left: pos?.x ?? -9999, top: pos?.y ?? 0 }}
-      className="pointer-events-none fixed z-[300] w-max max-w-[min(440px,calc(100vw-24px))] rounded-xl border border-black/10 bg-white/95 p-3 text-[12px] shadow-[0_10px_40px_rgba(0,0,0,.18)] backdrop-blur-md dark:border-white/10 dark:bg-[#2c2c2e]/95"
+      className="portal-isl pointer-events-none fixed z-[300] w-max max-w-[min(440px,calc(100vw-24px))] rounded-xl border border-black/10 bg-white/95 p-3 text-[12px] shadow-[0_10px_40px_rgba(0,0,0,.18)] backdrop-blur-md dark:border-white/10 dark:bg-[#2c2c2e]/95"
     >
       {codes && <div className="mb-2 font-mono text-[11px] font-semibold tracking-wide text-[#0649fc] dark:text-[#6b93ff]">{codes}</div>}
       <ul className="flex flex-col gap-2">
@@ -507,7 +507,7 @@ function TrechosFull({ snap, now, onClose }: { snap: NetworkSnapshot; now: numbe
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.22 }}
-      className="fixed inset-0 z-[280] overflow-y-auto bg-[#f5f5f7] px-5 py-6 sm:px-10 sm:py-8 dark:bg-[#0b0b0d]"
+      className="portal-isl fixed inset-0 z-[280] overflow-y-auto bg-[#f5f5f7] px-5 py-6 sm:px-10 sm:py-8 dark:bg-[#0b0b0d]"
     >
       <div className="flex flex-wrap items-center gap-3">
         <span className="relative flex h-3 w-3">

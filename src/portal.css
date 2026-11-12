@@ -18,7 +18,7 @@
 /* minimal reset, scoped to the islands (we skip Tailwind's global preflight);
    layered, so any utility class still wins over it */
 @layer base {
-  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(button, input, textarea, select) {
+  :where(#dock-root, #events-root, #demands-root, #localities-root, #janelas-root, .portal-isl) :where(button, input, textarea, select) {
     font: inherit;
     color: inherit;
     letter-spacing: inherit;
@@ -27,12 +27,12 @@
     padding: 0;
     margin: 0;
   }
-  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(*, ::before, ::after) {
+  :where(#dock-root, #events-root, #demands-root, #localities-root, #janelas-root, .portal-isl) :where(*, ::before, ::after) {
     border-width: 0;
     border-style: solid;
   }
-  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(ul) { list-style: none; }
-  :where(#dock-root, #events-root, #demands-root, #localities-root) :where(a) { color: inherit; text-decoration: none; }
+  :where(#dock-root, #events-root, #demands-root, #localities-root, #janelas-root, .portal-isl) :where(ul) { list-style: none; }
+  :where(#dock-root, #events-root, #demands-root, #localities-root, #janelas-root, .portal-isl) :where(a) { color: inherit; text-decoration: none; }
 }
 
 /* ── the dock floats over every page (desktop: vertical, left edge) ──
@@ -138,6 +138,15 @@ body { padding-bottom: var(--dock-space); }
 @keyframes di-door { 0%, 15%, 85%, 100% { transform: translateY(0); } 35%, 65% { transform: translateY(-6.5px); } }
 @keyframes di-crate { 0%, 22%, 78%, 100% { opacity: 0; transform: scale(.6); } 38%, 62% { opacity: 1; transform: none; } }
 
+/* Janelas: the clock hand sweeps, the slot fills in, the rings bob */
+.di-hand { transform-origin: 17.5px 17.5px; animation: di-hand 6s linear infinite; }
+.di-slot { opacity: .25; transform-origin: 7px 14px; animation: di-slot 6s ease-in-out infinite; }
+.di-ring { animation: di-ring 6s ease-in-out infinite; }
+.di-ring2 { animation-delay: .15s; }
+@keyframes di-hand { to { transform: rotate(360deg); } }
+@keyframes di-slot { 0%, 20% { opacity: .2; transform: scaleX(.3); } 45%, 80% { opacity: 1; transform: none; } 100% { opacity: .2; transform: scaleX(.3); } }
+@keyframes di-ring { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-1.2px); } 86% { transform: none; } }
+
 /* hover (and keyboard focus) plays everything faster */
 .dock-item:is(:hover, :focus-visible) :is(.di-box, .di-lid) { animation-duration: 1.4s; }
 .dock-item:is(:hover, :focus-visible) .di-edge { animation-duration: .5s; }
@@ -145,6 +154,7 @@ body { padding-bottom: var(--dock-space); }
 .dock-item:is(:hover, :focus-visible) :is(.di-line, .di-fold, .di-sign, .di-trace) { animation-duration: 1.8s; }
 .dock-item:is(:hover, :focus-visible) :is(.di-slats, .di-crate) { animation-duration: 2s; }
 .dock-item:is(:hover, :focus-visible) .di-smoke { animation-duration: 1.4s; }
+.dock-item:is(:hover, :focus-visible) :is(.di-hand, .di-slot, .di-ring) { animation-duration: 2s; }
 .dock-item:is(:hover, :focus-visible) .di-smoke2 { animation-delay: .7s; }
 
 @media (prefers-reduced-motion: reduce) {
