@@ -72,13 +72,16 @@ NMS API (`server/padtec.js`, every 60 s, same `NMS_TOKEN` / `data/nms-token.txt`
 active alarms whose name has "Via A"/"Via B" or "Falha interna de alimentação" (energia), "Temperatura" or "Tempo de resposta".
 
 **Cross-connect monitoring (Amazon Leo dashboard):** `server/ifmon.js` reads, over SNMP v2c every
-minute (no dependencies, `server/snmp.js`), the two router ports of a CCC that carries a Leo circuit.
-SLZ501 ↔ Equinix SP4 crosses `PB-CGE-A01-BKB-RT-001`: et-0/0/27 faces Eletronet (SP4), et-0/0/28 faces
-Amazon Leo SLZ501 — so a flap is pinned to one side. Per port: ifOper/AdminStatus, ifHCIn/OutOctets
-(→ bps), ifHighSpeed, ifAlias and ifLastChange + sysUpTime (exact transition time; a flap shorter than
-the poll is still recorded). ifIndex is found by ifName. Paths are listed in `PATHS`; 7 days of history
-in the `ifmon` collection, `GET /api/leo/ifmon?hours=6|24|168`; shown inside the site on the dashboard.
-The community comes from env `SNMP_COMMUNITY` or `data/snmp-community.txt` (never committed).
+minute (no dependencies, `server/snmp.js`), every router port that carries a Leo circuit through a CCC.
+SLZ501 ↔ Equinix SP4 (SPOOCR964174) crosses two of them:
+`SLZ501 ─ et-0/0/28 [PB-CGE-A01-BKB-RT-001] et-0/0/27 ═ Eletronet ═ 50|100GE0/3/0 [SP-BRE-A02-BKB-RT-001] 50|100GE0/6/0 ─ AWS SP4`
+— so a flap is pinned to the Amazon Leo side, the Eletronet transport (both Eletronet ports) or the AWS
+SP4 side. Per port: ifOper/AdminStatus, ifHCIn/OutOctets (→ bps), ifHighSpeed, ifAlias and
+ifLastChange + sysUpTime (exact transition time; a flap shorter than the poll is still recorded).
+ifIndex is found by ifName (or ifDescr); each router is polled on its own. Paths are listed in `PATHS`;
+7 days of history in the `ifmon` collection, `GET /api/leo/ifmon?hours=6|24|168`; shown inside the site.
+The community comes from env `SNMP_COMMUNITY` or `data/snmp-community.txt` (never committed); every
+router must allow SNMP from the portal server.
 
 **DWDM Padtec alarms:** every Zabbix event of a host in the host group **PADTEC** goes to the
 `dwdmalarms` collection (`GET /api/network/dwdm`) instead of trechos / Amazon Leo, and is shown in
