@@ -54,6 +54,7 @@ const PATHS = [
 
 const KEEP_MS = 7 * 86400000;           /* history: 7 days at 1 min */
 const MAX_EVENTS = 500;
+const AGENT_GRACE = 30000;              /* ticks (5 min): an ifLastChange this close to the agent start = "before it" */
 const SYS_UPTIME = '1.3.6.1.2.1.1.3.0';
 const IF_NAME = '1.3.6.1.2.1.31.1.1.1.1';
 const IF_DESCR = '1.3.6.1.2.1.2.2.1.2';
@@ -122,9 +123,14 @@ async function pollHop(p, hop, community, store, opts) {
         throw new Error(pt.ifName + ' moved — re-resolving the ifIndex');
       }
       const status = g.admin === 2 ? 'admin-down' : OPER[g.oper] || 'unknown';
-      /* when the last transition happened, from the router's own clock */
-      const changeAt = typeof sysUp === 'number' && typeof g.last === 'number' && g.last > 0 && sysUp >= g.last
-        ? now - (sysUp - g.last) * 10 : null;
+      /* when the last transition happened, from the router's own clock. sysUpTime counts from
+         the start of the SNMP agent (on Junos it restarts with snmpd, e.g. after an SNMP config
+         commit), so a change older than the agent shows up as ~0 ticks: then the real time is
+         unknown — only "before the agent started" */
+      const agentStart = typeof sysUp === 'number' ? now - sysUp * 10 : null;
+      const known = typeof sysUp === 'number' && typeof g.last === 'number' && g.last > AGENT_GRACE && sysUp >= g.last;
+      const changeAt = known ? now - (sysUp - g.last) * 10 : null;
+      const before = !known && agentStart ? iso(agentStart) : null;
 
       /* traffic from the counter deltas */
       let inBps = null, outBps = null;
@@ -139,24 +145,31 @@ async function pollHop(p, hop, community, store, opts) {
       const rebooted = r.sysUp !== undefined && typeof sysUp === 'number' && sysUp < r.sysUp;
       const at = iso(changeAt || now);
       const label = hop.router + ' ' + pt.ifName + ' (' + pt.side + ')';
+      const sinceAgent = !r.events.length || !agentStart || Date.parse(r.events[0].at) < agentStart;
       if (r.status === undefined) {
-        r.statusSince = changeAt ? iso(changeAt) : iso(now);              /* first reading: the router knows since when */
+        r.statusSince = changeAt ? iso(changeAt) : before || iso(now);   /* first reading: the router knows since when */
+        r.sinceBefore = !changeAt && !!before;
       } else if (r.status !== status) {
         const ev = { at, type: status === 'up' ? 'up' : 'down', status };
         if (ev.type === 'up') { const d = r.events.find((e) => e.type === 'down'); if (d) ev.dur = Math.max(0, Date.parse(at) - Date.parse(d.at)); }
         r.events.unshift(ev);
-        r.statusSince = at;
+        r.statusSince = at; r.sinceBefore = false;
         console.log('ifmon: ' + label + ' is ' + status);
-      } else if (!rebooted && changeAt && r.lastChangeAt && Math.abs(changeAt - Date.parse(r.lastChangeAt)) > 1500) {
+      } else if (!rebooted && changeAt && (r.lastChangeAt ? Math.abs(changeAt - Date.parse(r.lastChangeAt)) > 1500 : r.lastChangeBefore)) {
         /* same status, but the port changed in between: a flap shorter than the poll */
         r.events.unshift({ at, type: 'flap', status });
-        r.statusSince = at;
+        r.statusSince = at; r.sinceBefore = false;
         console.log('ifmon: ' + label + ' flapped');
+      } else if (!changeAt && before && sinceAgent) {
+        /* nothing happened since the agent started: the state is older than that (fixes records
+           written before this check existed, which took the agent start for the last change) */
+        r.statusSince = before; r.sinceBefore = true;
       }
       r.events = r.events.slice(0, MAX_EVENTS);
       Object.assign(r, {
         status, ok: true, error: null, polledAt: iso(now), sysUp,
-        lastChangeAt: changeAt ? iso(changeAt) : r.lastChangeAt || null,
+        lastChangeAt: changeAt ? iso(changeAt) : null,
+        lastChangeBefore: changeAt ? null : before,
         alias: g.alias || '', speedMbps: typeof g.speed === 'number' ? g.speed : null, ifIndex: i,
         inBps, outBps
       });
@@ -192,14 +205,19 @@ function start(dataDir, store) {
   setInterval(run, every);
 }
 
-/* GET /api/leo/ifmon?hours=24 — per path: each hop with its two ports (state, ≤ 360 averaged points, events) */
+/* GET /api/leo/ifmon?hours=24 (or ?from=&to= in epoch ms, for the chart zoom) — per path: each hop with its two ports (state, ≤ 360 averaged points, events) */
 function response(q, store) {
   const hours = Math.min(168, Math.max(1, parseInt(q.hours, 10) || 24));
-  const from = Date.now() - hours * 3600000;
+  /* zoom: an explicit window (?from=&to=, epoch ms) instead of the last N hours */
+  const now = Date.now();
+  const zf = parseInt(q.from, 10), zt = parseInt(q.to, 10);
+  const zoom = zf > 0 && zt > zf;
+  const from = zoom ? Math.max(zf, now - KEEP_MS) : now - hours * 3600000;
+  const to = zoom ? Math.min(zt, now) : now;
   const recs = store.read('ifmon');
   const portOut = (p, hop, pt, k) => {
     const r = recs.find((x) => x.id === p.id + ':' + pt.key) || {};
-    const pts = (r.history || []).filter((h) => Date.parse(h[0]) >= from);
+    const pts = (r.history || []).filter((h) => { const t = Date.parse(h[0]); return t >= from && t <= to; });
     const step = Math.max(1, Math.ceil(pts.length / 360)), out = [];
     for (let i = 0; i < pts.length; i += step) {
       const b = pts.slice(i, i + step);
@@ -212,15 +230,16 @@ function response(q, store) {
       key: pt.key, ifName: pt.ifName, side: pt.side, facing: k === 0 ? 'left' : 'right',
       router: hop.router, short: hop.short, ifIndex: r.ifIndex || pt.ifIndex || null,
       alias: r.alias || '', speedMbps: r.speedMbps ?? null,
-      status: r.status || null, statusSince: r.statusSince || null, lastChangeAt: r.lastChangeAt || null,
+      status: r.status || null, statusSince: r.statusSince || null, sinceBefore: !!r.sinceBefore,
+      lastChangeAt: r.lastChangeAt || null, lastChangeBefore: r.lastChangeBefore || null,
       inBps: r.inBps ?? null, outBps: r.outBps ?? null, peakIn: peak(1), peakOut: peak(2),
       ok: r.ok !== false, error: r.error || null, polledAt: r.polledAt || null, failedAt: r.failedAt || null,
-      events: (r.events || []).filter((e) => Date.parse(e.at) >= from),
+      events: (r.events || []).filter((e) => { const t = Date.parse(e.at); return t >= from && t <= to; }),
       points: out
     };
   };
   return {
-    hours,
+    hours, from: new Date(from).toISOString(), to: new Date(to).toISOString(),
     paths: PATHS.map((p) => ({
       id: p.id, site: p.site, circuit: p.circuit, title: p.title, left: p.left, right: p.right, segments: p.segments,
       hops: p.hops.map((h) => {

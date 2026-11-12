@@ -350,7 +350,7 @@ function ldbIfLoad() {
     if (sig !== ldbIf.sig) { ldbIf.sig = sig; ldbPathRender(); }
   }).catch(function() { /* keeps the last data */ });
 }
-function ldbIfSet(h) { ldbIf.hours = h; ldbIf.sig = ''; ldbPathRender(); ldbIfLoad(); }
+function ldbIfSet(h) { ldbIf.hours = h; ldbIf.sig = ''; ldbIf.zoom = {}; ldbPathRender(); ldbIfLoad(); }
 
 function ldbBps(v) {
   if (v === null || v === undefined) return '—';
@@ -422,7 +422,7 @@ function ldbPathCard(p) {
     return '<div class="ldb-pd-port ' + s.st + '">'
       + '<span class="ldb-pd-pill"><i></i>' + esc(s.pt.ifName) + '</span>'
       + '<span class="ldb-pd-side">' + esc(s.pt.side) + '</span>'
-      + (s.pt.statusSince ? '<span class="ldb-pd-since">' + (s.st === 'up' ? 'up ' : s.st === 'down' ? 'down ' : '') + '<span data-ldur="' + s.pt.statusSince + '">' + ldbDur(s.pt.statusSince) + '</span></span>' : '')
+      + (s.pt.statusSince ? '<span class="ldb-pd-since">' + (s.st === 'up' ? 'up ' : s.st === 'down' ? 'down ' : '') + (s.pt.sinceBefore ? '&gt; ' : '') + '<span data-ldur="' + s.pt.statusSince + '">' + ldbDur(s.pt.statusSince) + '</span></span>' : '')
       + '</div>';
   }
   /* a segment; its traffic is read on the port next to it (→ toward the right end) */
@@ -455,7 +455,8 @@ function ldbPathCard(p) {
       +   '<div><span>Flaps</span><b>' + s.flaps + '</b></div>'
       +   '<div><span>Down events</span><b>' + s.drops + '</b></div>'
       +   '<div><span>Downtime</span><b>' + (s.downtime ? ldbMin(s.downtime) : '0') + '</b></div>'
-      +   '<div><span>Last change</span><b>' + (s.pt.lastChangeAt ? ldbFmt(s.pt.lastChangeAt).slice(0, 12) : '—') + '</b></div>'
+      +   '<div title="Last time this port went down or up (from the router)"><span>Last flap</span><b>' + (s.pt.lastChangeAt ? ldbFmt(s.pt.lastChangeAt).slice(0, 12)
+          : s.pt.lastChangeBefore ? '<small>before</small> ' + ldbFmt(s.pt.lastChangeBefore).slice(0, 12) : '—') + '</b></div>'
       + '</div></div>';
   }).join('') + '</div>';
 
@@ -494,19 +495,48 @@ function ldbPathCard(p) {
 }
 
 /* traffic of the circuit, read on the port facing the left end (the Leo site):
-   in = toward the right end (SP4), out = toward the left end (SLZ501) */
-function ldbPathChart(p) {
-  var body = document.getElementById('ldb-pc-' + p.id);
+   in = toward the right end (SP4), out = toward the left end (SLZ501).
+   Drag across the chart to zoom into that interval (fetched again at full
+   1-min resolution); double-click or "Reset zoom" goes back to the range. */
+ldbIf.zoom = {};   /* path id → { from, to, path (zoomed data) | null while loading } */
+
+function ldbIfZoom(id, a, b) {
+  if (b - a < 10 * 60000) { var mid = (a + b) / 2; a = mid - 5 * 60000; b = mid + 5 * 60000; }   /* at least 10 min */
+  ldbIf.zoom[id] = { from: a, to: b, path: null };
+  var base = ldbIf.data && ldbIf.data.paths.filter(function(x) { return x.id === id; })[0];
+  if (base) ldbPathChart(base);
+  _apiGet('/leo/ifmon?from=' + Math.round(a) + '&to=' + Math.round(b)).then(function(d) {
+    var z = ldbIf.zoom[id];
+    if (!z || z.from !== a || z.to !== b) return;
+    z.path = d.paths.filter(function(x) { return x.id === id; })[0] || null;
+    if (base) ldbPathChart(base);
+  }).catch(function() { delete ldbIf.zoom[id]; if (base) ldbPathChart(base); });
+}
+function ldbIfUnzoom(id) {
+  delete ldbIf.zoom[id];
+  var base = ldbIf.data && ldbIf.data.paths.filter(function(x) { return x.id === id; })[0];
+  if (base) ldbPathChart(base);
+}
+
+function ldbPathChart(base) {
+  var body = document.getElementById('ldb-pc-' + base.id);
   if (!body) return;
-  var a = p.hops[0].ports[0], to = Date.now(), from = to - ldbIf.hours * 3600000;
+  var z = ldbIf.zoom[base.id], p = z && z.path ? z.path : base;
+  var to = z ? z.to : Date.now(), from = z ? z.from : to - ldbIf.hours * 3600000;
+  var a = p.hops[0].ports[0];
+  var inWin = function(x) { var t = new Date(x[0]).getTime(); return t >= from && t <= to; };
   var series = [
-    { name: 'Toward ' + p.right.name, cls: 'if-in', pts: (a.points || []).map(function(x) { return [x[0], x[1]]; }) },
-    { name: 'Toward ' + p.left.name, cls: 'if-out', pts: (a.points || []).map(function(x) { return [x[0], x[2]]; }) }
+    { name: 'Toward ' + p.right.name, cls: 'if-in', pts: (a.points || []).filter(inWin).map(function(x) { return [x[0], x[1]]; }) },
+    { name: 'Toward ' + p.left.name, cls: 'if-out', pts: (a.points || []).filter(inWin).map(function(x) { return [x[0], x[2]]; }) }
   ];
   var allPorts = [];
   p.hops.forEach(function(h) { h.ports.forEach(function(x) { allPorts.push(x); }); });
+  var zoomBar = z ? '<span class="ldb-zoom-info">' + (z.path ? '' : 'Loading… ') + 'Zoom ' + ldbFmt(new Date(from).toISOString()).slice(0, 12) + ' → ' + ldbFmt(new Date(to).toISOString()).slice(0, 12)
+      + ' <button class="ldb-zoom-reset" onclick="ldbIfUnzoom(\'' + base.id + '\')">Reset zoom</button></span>'
+    : '<span class="ldb-zoom-hint">Drag over the chart to zoom</span>';
   if (!series.some(function(s) { return s.pts.some(function(x) { return x[1] !== null; }); })) {
-    body.innerHTML = '<div class="ldb-rxm-empty">' + ((a.points || []).length ? 'Collecting traffic — needs two readings' : 'No readings yet — the portal reads the router every minute') + '</div>';
+    body.innerHTML = '<div class="ldb-rxm-legend">' + zoomBar + '</div><div class="ldb-rxm-empty">'
+      + (z ? (z.path ? 'No traffic readings in this interval' : 'Loading…') : (a.points || []).length ? 'Collecting traffic — needs two readings' : 'No readings yet — the portal reads the router every minute') + '</div>';
     return;
   }
   var W = Math.max(260, body.clientWidth), H = 210, L = 66, Rm = 10, T = 10, B = 24, pw = W - L - Rm, ph = H - T - B;
@@ -520,14 +550,15 @@ function ldbPathChart(p) {
     var v = top * g / 4;
     grid += '<line class="g" x1="' + L + '" x2="' + (W - Rm) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text class="ya" x="' + (L - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '">' + ldbAxisBps(v) + '</text>';
   }
-  var nT = Math.max(2, Math.min(6, Math.floor(pw / 110))), xt = '';
+  var span = to - from, nT = Math.max(2, Math.min(6, Math.floor(pw / 110))), xt = '';
   for (var n = 0; n <= nT; n++) {
-    var t = from + (to - from) * n / nT, lab = ldbFmt(new Date(t).toISOString());
-    xt += '<text class="xa" x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (n === 0 ? 'start' : n === nT ? 'end' : 'middle') + '">' + (ldbIf.hours > 24 ? lab.slice(0, 6) : lab.slice(7, 12)) + '</text>';
+    var t = from + span * n / nT, lab = ldbFmt(new Date(t).toISOString());
+    xt += '<text class="xa" x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (n === 0 ? 'start' : n === nT ? 'end' : 'middle') + '">'
+      + (span > 36 * 3600000 ? lab.slice(0, 6) : span > 20 * 3600000 ? lab.slice(0, 2) + ' ' + lab.slice(7, 12) : lab.slice(7, 12)) + '</text>';
   }
   var bands = [].concat.apply([], allPorts.map(function(x) { return ldbPortDown(x, from, to); })).map(function(x) {
     var l = Math.max(L, X(x[0])), r = Math.min(W - Rm, X(x[1]));
-    return '<rect class="lossb" x="' + l.toFixed(1) + '" y="' + T + '" width="' + Math.max(2, r - l).toFixed(1) + '" height="' + ph + '"/>';
+    return r > l ? '<rect class="lossb" x="' + l.toFixed(1) + '" y="' + T + '" width="' + Math.max(2, r - l).toFixed(1) + '" height="' + ph + '"/>' : '';
   }).join('');
   function line(pts) {
     var d = '', pen = false;
@@ -539,15 +570,27 @@ function ldbPathChart(p) {
     var xs = seg.split('L'), f = xs[0].split(' ')[0], e = xs[xs.length - 1].split(' ')[0];
     return 'M' + f + ' ' + (T + ph) + 'L' + seg + 'L' + e + ' ' + (T + ph) + 'Z';
   }).join('');
-  body.innerHTML = '<div class="ldb-rxm-legend">' + series.map(function(s) { return '<span><i class="' + (s.cls === 'if-in' ? 'in' : 'out') + '"></i>' + esc(s.name) + '</span>'; }).join('') + (bands ? '<span><i class="ls"></i>Port down</span>' : '') + '</div>'
-    + '<div class="ldb-rxm-chart"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
-    + grid + bands + '<path class="if-area" d="' + area + '"/><path class="if-in" d="' + l0 + '"/><path class="if-out" d="' + line(series[1].pts) + '"/>' + xt
-    + '<line class="xh" y1="' + T + '" y2="' + (T + ph) + '" style="display:none"/><rect class="hit" x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '"/></svg>'
+  body.innerHTML = '<div class="ldb-rxm-legend">' + series.map(function(s) { return '<span><i class="' + (s.cls === 'if-in' ? 'in' : 'out') + '"></i>' + esc(s.name) + '</span>'; }).join('')
+    + (bands ? '<span><i class="ls"></i>Port down</span>' : '') + zoomBar + '</div>'
+    + '<div class="ldb-rxm-chart' + (z && !z.path ? ' loading' : '') + '"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
+    + '<defs><clipPath id="ldb-clip-' + base.id + '"><rect x="' + L + '" y="0" width="' + pw + '" height="' + H + '"/></clipPath></defs>'
+    + grid + '<g clip-path="url(#ldb-clip-' + base.id + ')">' + bands + '<path class="if-area" d="' + area + '"/><path class="if-in" d="' + l0 + '"/><path class="if-out" d="' + line(series[1].pts) + '"/></g>' + xt
+    + '<line class="xh" y1="' + T + '" y2="' + (T + ph) + '" style="display:none"/>'
+    + '<rect class="zsel" y="' + T + '" height="' + ph + '" style="display:none"/>'
+    + '<rect class="hit zoomable" x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '"/></svg>'
     + '<div class="ldb-rxm-tip"></div></div>';
-  var svg = body.querySelector('svg'), hit = svg.querySelector('.hit'), xh = svg.querySelector('.xh'), tip = body.querySelector('.ldb-rxm-tip');
+  var svg = body.querySelector('svg'), hit = svg.querySelector('.hit'), xh = svg.querySelector('.xh'), sel = svg.querySelector('.zsel'), tip = body.querySelector('.ldb-rxm-tip');
   function near(pts, t) { var k = -1, best = Infinity; for (var j = 0; j < pts.length; j++) { var dd = Math.abs(new Date(pts[j][0]).getTime() - t); if (dd < best) { best = dd; k = j; } } return k < 0 ? null : pts[k]; }
+  function px(e) { var r = svg.getBoundingClientRect(); return Math.max(L, Math.min(L + pw, (e.touches ? e.touches[0].clientX : e.clientX) - r.left)); }
+  var drag = null;
   function move(e) {
-    var r = svg.getBoundingClientRect(), mx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left, t = from + (mx - L) / pw * (to - from);
+    var mx = px(e);
+    if (drag !== null) {                                   /* selecting an interval */
+      sel.setAttribute('x', Math.min(drag, mx)); sel.setAttribute('width', Math.abs(mx - drag)); sel.style.display = '';
+      tip.style.display = 'none'; xh.style.display = 'none';
+      return;
+    }
+    var t = from + (mx - L) / pw * span;
     var p0 = near(series[0].pts, t), p1 = near(series[1].pts, t); if (!p0) return;
     var x = X(new Date(p0[0]).getTime());
     xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = '';
@@ -557,8 +600,22 @@ function ldbPathChart(p) {
     tip.style.left = Math.min(Math.max(x - tip.offsetWidth / 2, 0), W - tip.offsetWidth) + 'px';
     tip.style.top = '0px';
   }
-  function out() { xh.style.display = 'none'; tip.style.display = 'none'; }
+  function out() { if (drag === null) { xh.style.display = 'none'; tip.style.display = 'none'; } }
+  function down(e) { if (e.button !== undefined && e.button !== 0) return; drag = px(e); e.preventDefault(); }
+  function up(e) {
+    if (drag === null) return;
+    var x2 = px(e.changedTouches ? e.changedTouches[0] : e), x1 = drag;
+    drag = null; sel.style.display = 'none';
+    if (Math.abs(x2 - x1) < 6) return;                   /* a click, not a selection */
+    var t1 = from + (Math.min(x1, x2) - L) / pw * span, t2 = from + (Math.max(x1, x2) - L) / pw * span;
+    ldbIfZoom(base.id, t1, t2);
+  }
   hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true });
   hit.addEventListener('mouseleave', out);
+  hit.addEventListener('mousedown', down);
+  hit.addEventListener('dblclick', function() { if (ldbIf.zoom[base.id]) ldbIfUnzoom(base.id); });
+  /* finish the selection even if the mouse leaves the chart */
+  document.addEventListener('mousemove', function onMove(e) { if (!document.body.contains(svg)) { document.removeEventListener('mousemove', onMove); return; } if (drag !== null) move(e); });
+  document.addEventListener('mouseup', function onUp(e) { if (!document.body.contains(svg)) { document.removeEventListener('mouseup', onUp); return; } up(e); });
 }
 window.addEventListener('resize', function() { if (ldbIf.data) ldbIf.data.paths.forEach(ldbPathChart); });

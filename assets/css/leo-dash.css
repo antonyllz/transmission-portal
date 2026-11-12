@@ -292,3 +292,15 @@
 [data-theme="dark"] .ldb-rxm-chart .if-out { stroke: #30d158; }
 [data-theme="dark"] .ldb-rxm-legend .in, [data-theme="dark"] .ldb-if-dot.in { background: #6b93ff; }
 [data-theme="dark"] .ldb-rxm-legend .out, [data-theme="dark"] .ldb-if-dot.out { background: #30d158; }
+.ldb-pd-sc-g b small { font-size: 11px; font-weight: 500; color: var(--muted); }
+
+/* chart zoom (drag to select) */
+.ldb-rxm-chart .hit.zoomable { cursor: crosshair; }
+.ldb-rxm-chart .zsel { fill: rgba(6, 73, 252, .14); stroke: rgba(6, 73, 252, .6); stroke-width: 1; }
+.ldb-rxm-chart.loading { opacity: .55; transition: opacity .2s; }
+.ldb-zoom-hint { margin-left: auto; font-size: 11px; color: var(--muted); opacity: .8; }
+.ldb-zoom-info { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ldb-zoom-reset { border: 1px solid var(--border); background: var(--white); color: #0649fc; font: 600 11px 'Inter', system-ui, sans-serif; border-radius: 7px; padding: 3px 9px; cursor: pointer; }
+.ldb-zoom-reset:hover { border-color: #0649fc; }
+[data-theme="dark"] .ldb-rxm-chart .zsel { fill: rgba(107, 147, 255, .18); stroke: rgba(107, 147, 255, .7); }
+[data-theme="dark"] .ldb-zoom-reset { background: #2c2c2e; color: #8fb0ff; }
