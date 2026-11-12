@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { prefersReducedMotion } from "./season";
 
-/* The three Santas take turns, always starting with Santa 3:
+/* The three Santas take turns, always starting with all three together:
+   • "trio": the three rise side by side at the bottom center — Santa 3 (the one
+     with glasses) in the middle, a bit taller, the other two leaning in;
    • "peek": Santa 3 (or Santa 1) rises from the bottom-right corner, leans in, says
      something, and ducks back down;
    • "walk": Santa 2 walks across the bottom of the screen, right to left,
@@ -27,9 +29,9 @@ const LINES = [
 const FIRST_DELAY = 3500;
 const GAP = 22000;
 
-type Act = "peek3" | "walk" | "peek1";
-/* the order they show up in; Santa 3 is the first one on every page load */
-const ORDER: Act[] = ["peek3", "walk", "peek1", "walk"];
+type Act = "trio" | "peek3" | "walk" | "peek1";
+/* the order they show up in; the trio opens every page load */
+const ORDER: Act[] = ["trio", "walk", "peek3", "walk", "peek1", "walk"];
 /* the peeking Santas: image and box size (keeps each image's proportions) */
 const PEEK = {
   peek1: { src: SANTA_1, box: "h-[230px] w-[103px] sm:h-[300px] sm:w-[134px]" },
@@ -82,6 +84,7 @@ export function Santas() {
         {(act === "peek1" || act === "peek3") && (
           <Peek key={act} {...PEEK[act]} line={line} onDone={done} onPop={pop} reduced={reduced} />
         )}
+        {act === "trio" && <Trio key="trio" line={line} onDone={done} onPop={pop} reduced={reduced} />}
         {act === "walk" && <Walk key="walk" line={line} onDone={done} onPop={pop} reduced={reduced} />}
       </AnimatePresence>
       {bursts.map((b) => (
@@ -159,6 +162,77 @@ function Peek({
         className="xmas-santa pointer-events-auto h-full w-full cursor-pointer object-contain select-none"
       />
     </motion.div>
+  );
+}
+
+/* all three together at the bottom center: the sides rise first, then the
+   one with glasses pops up in the middle and talks; they sway a little out of
+   step, and sink back together */
+const TRIO = [
+  { src: SANTA_1, box: "h-[190px] w-[85px] sm:h-[250px] sm:w-[112px]", tilt: 7, delay: 0.1, sway: 0 },
+  { src: SANTA_3, box: "h-[220px] w-[121px] sm:h-[290px] sm:w-[160px]", tilt: 0, delay: 0.45, sway: 0.4 },
+  { src: SANTA_2, box: "h-[190px] w-[91px] sm:h-[250px] sm:w-[120px]", tilt: -7, delay: 0.2, sway: 0.8 },
+];
+function Trio({ line, onDone, onPop, reduced }: { line: string; onDone: () => void; onPop: (e: React.MouseEvent) => void; reduced: boolean }) {
+  const [talk, setTalk] = useState(false);
+  const [hop, setHop] = useState([0, 0, 0]);
+  useEffect(() => {
+    const a = setTimeout(() => setTalk(true), 1300);
+    const b = setTimeout(onDone, 9000);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [onDone]);
+  return (
+    <div className="pointer-events-none fixed bottom-0 left-1/2 z-[245] flex -translate-x-1/2 items-end">
+      {TRIO.map((t, i) => (
+        <motion.div
+          key={t.src}
+          className={"relative -mx-2 sm:-mx-3 " + t.box + (i === 1 ? " z-[1]" : "")}
+          initial={{ y: "105%", rotate: t.tilt * 1.6 }}
+          animate={{ y: i === 1 ? "18%" : "26%", rotate: t.tilt }}
+          exit={{ y: "110%", transition: { duration: 0.5, delay: 0.08 * i, ease: [0.5, 0, 0.75, 0] } }}
+          transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 110, damping: 13, delay: t.delay }}
+        >
+          {i === 1 && (
+            /* centered above the middle Santa */
+            <div className="absolute bottom-[97%] left-1/2 flex w-0 justify-center">
+              <AnimatePresence>
+                {talk && (
+                  <motion.div
+                    key={line}
+                    initial={{ opacity: 0, scale: 0.6, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                    className="xmas-bubble w-max max-w-[240px] shrink-0 origin-bottom rounded-2xl px-3.5 py-2 text-center text-[13px] leading-snug font-semibold"
+                  >
+                    {line}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+          <motion.img
+            src={t.src}
+            alt="Papai Noel"
+            draggable={false}
+            key={hop[i]}
+            onClick={(e) => {
+              onPop(e);
+              setHop((h) => h.map((v, k) => (k === i ? v + 1 : v)));
+              setTalk(true);
+            }}
+            animate={hop[i] ? { y: [0, -36, 0], rotate: [0, -6, 4, 0] } : reduced ? undefined : { rotate: [-2, 2, -2] }}
+            transition={
+              hop[i] ? { duration: 0.6 } : { duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: t.sway }
+            }
+            className="xmas-santa pointer-events-auto h-full w-full cursor-pointer object-contain select-none"
+          />
+        </motion.div>
+      ))}
+    </div>
   );
 }
 
