@@ -7,6 +7,8 @@
    • Padtec alarms: REAL — GET /api/network/padtec (server/padtec.js reads
      the NMS every minute and keeps "Via A/B" = energia, "Temperatura" and
      "Tempo de resposta" alarms).
+   • DWDM Padtec alarms: REAL — Zabbix events of hosts in the host group
+     PADTEC, from GET /api/network/dwdm (server/zabbix.js).
    • Locality names: GET /api/network/localities (DWDM map + the
      entries added on the "Localidades" page).
    ═══════════════════════════════════════════════════════════════ */
@@ -65,9 +67,33 @@ export type PadtecAlarm = {
 };
 export type PadtecStatus = { configured: boolean; ok: boolean; error: string | null; updatedAt: string | null };
 
+/** Zabbix severity: 0 not classified … 5 disaster */
+export type ZbxSeverity = 0 | 1 | 2 | 3 | 4 | 5;
+export type DwdmAlarm = {
+  id: string;
+  host: string;
+  trigger: string;
+  opdata: string;
+  severity: ZbxSeverity;
+  severityName: string;
+  status: "active" | "resolved";
+  acknowledged: boolean;
+  start: string;
+  end: string | null;
+};
+export type DwdmData = {
+  group: string;
+  active: DwdmAlarm[];
+  resolved: DwdmAlarm[];
+  receivingSince: string | null;
+  lastReceivedAt: string | null;
+  ok: boolean;
+};
+
 export type NetworkSnapshot = {
   trechos: Trecho[];
   resolved: Trecho[];
+  dwdm: DwdmData;
   padtecAlarms: PadtecAlarm[];
   padtec: PadtecStatus;
   localities: Record<string, Locality>;
@@ -121,7 +147,7 @@ function group(events: NetEvent[]): Trecho[] {
 }
 
 export async function fetchNetworkSnapshot(): Promise<NetworkSnapshot> {
-  const [ev, loc, pd] = await Promise.all([
+  const [ev, loc, pd, dw] = await Promise.all([
     getJSON<{ active: NetEvent[]; resolved: NetEvent[]; lastReceivedAt: string | null; receivingSince: string | null }>(
       "/api/network/events",
     ),
@@ -129,7 +155,11 @@ export async function fetchNetworkSnapshot(): Promise<NetworkSnapshot> {
     getJSON<PadtecStatus & { alarms: PadtecAlarm[] }>("/api/network/padtec").catch(
       (): PadtecStatus & { alarms: PadtecAlarm[] } => ({ configured: true, ok: false, error: "API indisponível", updatedAt: null, alarms: [] }),
     ),
+    getJSON<Omit<DwdmData, "ok">>("/api/network/dwdm")
+      .then((d): DwdmData => ({ ...d, ok: true }))
+      .catch((): DwdmData => ({ group: "PADTEC", active: [], resolved: [], receivingSince: null, lastReceivedAt: null, ok: false })),
   ]);
+  const bySeverity = (x: DwdmAlarm, y: DwdmAlarm) => y.severity - x.severity || y.start.localeCompare(x.start);
   const activeKeys = new Set(group(ev.active).map((t) => t.key));
   return {
     trechos: group(ev.active).sort((x, y) => x.since.localeCompare(y.since)),
@@ -137,6 +167,11 @@ export async function fetchNetworkSnapshot(): Promise<NetworkSnapshot> {
     resolved: group(ev.resolved)
       .filter((t) => !activeKeys.has(t.key))
       .sort((x, y) => String(y.until).localeCompare(String(x.until))),
+    dwdm: {
+      ...dw,
+      active: [...dw.active].sort(bySeverity),
+      resolved: [...dw.resolved].sort((x, y) => String(y.end).localeCompare(String(x.end))),
+    },
     padtecAlarms: [...pd.alarms].sort(
       (x, y) => SEV_RANK[x.severity] - SEV_RANK[y.severity] || String(y.start).localeCompare(String(x.start)),
     ),

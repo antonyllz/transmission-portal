@@ -71,6 +71,11 @@ collection), which also lists codes seen in alarms that have no name yet. Padtec
 NMS API (`server/padtec.js`, every 60 s, same `NMS_TOKEN` / `data/nms-token.txt` as the Rx collector):
 active alarms whose name has "Via A"/"Via B" or "Falha interna de alimentação" (energia), "Temperatura" or "Tempo de resposta".
 
+**DWDM Padtec alarms:** every Zabbix event of a host in the host group **PADTEC** goes to the
+`dwdmalarms` collection (`GET /api/network/dwdm`) instead of trechos / Amazon Leo, and is shown in
+"Alarmes DWDM Padtec" with one color per severity. The Zabbix media type must send the parameter
+`host_groups` = `{TRIGGER.HOSTGROUP.NAME}` (the group name can be changed with env `DWDM_GROUP`).
+
 **Demands:** the notepads read and write the same data as before (`dmdGetAll`/`dmdSave` in
 `assets/js/database.js`, synced to `/api/demands` and polled every 8s); only the rendering moved to React.
 

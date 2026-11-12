@@ -28,6 +28,8 @@ const FILES = {
   leometrics: path.join(DATA_DIR, 'leometrics.json'),    /* optical Rx per circuit */
   netalarms:  path.join(DATA_DIR, 'netalarms.json'),     /* Zabbix route/segment events (home "Eventos na rede") */
   netzbxmeta: path.join(DATA_DIR, 'netzbxmeta.json'),
+  dwdmalarms: path.join(DATA_DIR, 'dwdmalarms.json'),
+  dwdmzbxmeta: path.join(DATA_DIR, 'dwdmzbxmeta.json'),
   localities: path.join(DATA_DIR, 'localities.json'),    /* locality codes added in the portal (UF + Anatel code → name) */
   padtecalarms: path.join(DATA_DIR, 'padtecalarms.json'), /* Padtec NMS alarms: energia / temperatura / resposta (padtec.js) */
   padtecmeta:   path.join(DATA_DIR, 'padtecmeta.json')
@@ -104,6 +106,7 @@ const server = http.createServer((req, res) => {
   /* route/segment events for the home dashboard + the locality lookup list (internal, read-only) */
   if (url.pathname === '/api/network/events' && req.method === 'GET') { send(res, 200, netevents.eventsResponse(store)); return; }
   if (url.pathname === '/api/network/localities' && req.method === 'GET') { send(res, 200, netevents.localitiesResponse(store)); return; }
+  if (url.pathname === '/api/network/dwdm' && req.method === 'GET') { send(res, 200, zabbix.dwdmResponse(store)); return; }
   if (url.pathname === '/api/network/padtec' && req.method === 'GET') { send(res, 200, padtec.response(store)); return; }
 
   if (url.pathname === '/api/leo/status') {

@@ -11,6 +11,7 @@ import {
   IconRouteOff,
   IconTemperature,
   IconWifiOff,
+  IconWaveSine,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { fmtClock, fmtDuration, useNow } from "@/hooks/use-now";
@@ -24,6 +25,8 @@ import {
   type PadtecAlarm,
   type PadtecCategory,
   type Trecho,
+  type DwdmAlarm,
+  type ZbxSeverity,
 } from "@/data/network-events";
 
 const REFRESH_MS = 15_000;
@@ -102,6 +105,7 @@ export function NetworkEventsDashboard() {
 
   const down = snap.trechos.length;
   const padtecN = snap.padtecAlarms.length;
+  const dwdmN = snap.dwdm.active.length;
   const oldest = snap.trechos[0]?.since ?? null;
 
   return (
@@ -121,10 +125,14 @@ export function NetworkEventsDashboard() {
         {expanded && <TrechosFull snap={snap} now={now} onClose={() => setExpanded(false)} />}
       </AnimatePresence>
 
+      {/* ── DWDM Padtec ── */}
+      <DwdmPanel snap={snap} now={now} />
+
       {/* ── KPIs ── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon={<IconRouteOff />} label="Trechos down" value={down} tone={down ? "red" : "ok"} />
-        <Kpi icon={<IconAlertTriangle />} label="Alarmes Padtec" value={padtecN} tone={padtecN ? "orange" : "ok"} />
+        <Kpi icon={<IconWaveSine />} label="Alarmes DWDM Padtec" value={dwdmN} tone={dwdmN ? "red" : "ok"} />
+        <Kpi icon={<IconAlertTriangle />} label="Alarmes de infra Padtec" value={padtecN} tone={padtecN ? "orange" : "ok"} />
         <Kpi icon={<IconClockHour4 />} label="Trecho down mais antigo" value={oldest ? fmtDuration(now - Date.parse(oldest)) : "—"} tone="blue" />
       </div>
 
@@ -147,7 +155,7 @@ function PadtecPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
         : "Aguardando a primeira consulta";
   return (
     <section className={cn(card, "p-5")}>
-      <PanelHead title="Alarmes Padtec" count={all.length} hint="NMS Padtec" />
+      <PanelHead title="Alarmes de infra Padtec" count={all.length} hint="NMS Padtec" />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {(["all", "energia", "temperatura", "resposta"] as const).map((k) => {
           const n = k === "all" ? all.length : all.filter((a) => a.category === k).length;
@@ -626,5 +634,180 @@ function Empty({ text }: { text: string }) {
       <IconCircleCheck className="h-4 w-4 text-[#16a34a] dark:text-[#30d158]" />
       {text}
     </li>
+  );
+}
+
+/* ═════════════ DWDM Padtec (Zabbix host group PADTEC) ═════════════ */
+
+/* one color per Zabbix severity, hottest to coolest; `c` light theme, `d` dark theme */
+const ZBX_SEV: Record<ZbxSeverity, { label: string; c: string; d: string }> = {
+  5: { label: "Desastre", c: "#dc2626", d: "#ff453a" },
+  4: { label: "Alta", c: "#ea580c", d: "#ff8a3d" },
+  3: { label: "Média", c: "#ca8a04", d: "#ffd60a" },
+  2: { label: "Atenção", c: "#0891b2", d: "#3dd6f5" },
+  1: { label: "Informação", c: "#2563eb", d: "#6b9bff" },
+  0: { label: "Não classificada", c: "#8e8e93", d: "#aeaeb2" },
+};
+const SEV_ORDER: ZbxSeverity[] = [5, 4, 3, 2, 1, 0];
+const sevOf = (n: number) => ZBX_SEV[(Math.max(0, Math.min(5, n | 0)) as ZbxSeverity)];
+/* the severity color as a CSS variable, switched by the theme */
+const sevVars = (n: number) => {
+  const s = sevOf(n);
+  return { "--sev-l": s.c, "--sev-d": s.d } as React.CSSProperties;
+};
+const SEV_C = "[--sev:var(--sev-l)] dark:[--sev:var(--sev-d)]";
+
+function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
+  const [filter, setFilter] = useState<ZbxSeverity | "all">("all");
+  const { active, resolved, ok, receivingSince, lastReceivedAt, group } = snap.dwdm;
+  const shown = filter === "all" ? active : active.filter((a) => a.severity === filter);
+  const status = !ok
+    ? "API indisponível"
+    : lastReceivedAt
+      ? `Último evento às ${fmtClock(lastReceivedAt)}`
+      : `Aguardando eventos do grupo ${group}`;
+  return (
+    <section className={cn(card, "p-5")}>
+      <PanelHead title="Alarmes DWDM Padtec" count={active.length} hint={`Zabbix · grupo ${group}`} />
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <SevChip active={filter === "all"} onClick={() => setFilter("all")} label="Todos" n={active.length} />
+        {SEV_ORDER.map((k) => (
+          <SevChip
+            key={k}
+            sev={k}
+            active={filter === k}
+            onClick={() => setFilter(filter === k ? "all" : k)}
+            label={ZBX_SEV[k].label}
+            n={active.filter((a) => a.severity === k).length}
+          />
+        ))}
+        <span className={cn("ml-auto text-[11px]", ok ? muted : "text-[#ea580c]")}>{status}</span>
+      </div>
+      {shown.length ? (
+        <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
+          <AnimatePresence initial={false}>
+            {shown.map((a, i) => (
+              <DwdmCard key={a.id} al={a} now={now} i={i} />
+            ))}
+          </AnimatePresence>
+        </ul>
+      ) : (
+        <ul className="mt-3">
+          <Empty
+            text={
+              active.length
+                ? "Nenhum alarme com essa severidade"
+                : receivingSince
+                  ? "Nenhum alarme DWDM ativo"
+                  : `Nenhum evento do grupo ${group} recebido ainda`
+            }
+          />
+        </ul>
+      )}
+      <DwdmResolved list={resolved} />
+    </section>
+  );
+}
+
+function SevChip({ sev, active, onClick, label, n }: { sev?: ZbxSeverity; active: boolean; onClick: () => void; label: string; n: number }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={sev !== undefined ? sevVars(sev) : undefined}
+      className={cn(
+        SEV_C,
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+        active
+          ? sev === undefined
+            ? "border-transparent bg-[#1d1d1f] text-white dark:bg-[#f5f5f7] dark:text-[#1d1d1f]"
+            : "border-[var(--sev)] bg-[color-mix(in_srgb,var(--sev)_14%,transparent)] text-[#1d1d1f] dark:text-[#f5f5f7]"
+          : "border-black/10 text-[#3a3a3c] hover:border-black/20 dark:border-white/10 dark:text-[#d1d1d6] dark:hover:border-white/25",
+        sev !== undefined && !n && !active && "opacity-45",
+      )}
+    >
+      {sev !== undefined && <span className="h-2 w-2 rounded-full bg-[var(--sev)]" />}
+      {label} <b className="font-semibold opacity-50">{n}</b>
+    </button>
+  );
+}
+
+/* one alarm: the card is tinted with its severity color */
+function DwdmCard({ al, now, i }: { al: DwdmAlarm; now: number; i: number }) {
+  const sev = sevOf(al.severity);
+  const hot = al.severity >= 4;
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1, transition: { delay: 0.03 * i } }}
+      exit={{ opacity: 0, scale: 0.94 }}
+      title={[al.trigger, al.host, al.opdata].filter(Boolean).join("\n")}
+      style={sevVars(al.severity)}
+      className={cn(
+        SEV_C,
+        "relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--sev)_32%,transparent)] bg-[color-mix(in_srgb,var(--sev)_6%,transparent)] p-3 pt-3.5 transition-colors hover:border-[color-mix(in_srgb,var(--sev)_65%,transparent)] hover:bg-[color-mix(in_srgb,var(--sev)_10%,transparent)]",
+      )}
+    >
+      <span className="absolute inset-x-0 top-0 h-[3px] bg-[var(--sev)]" aria-hidden="true" />
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2 shrink-0">
+          {hot && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--sev)] opacity-60" />}
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--sev)]" />
+        </span>
+        <span className="rounded-md bg-[var(--sev)] px-1.5 py-px text-[10px] font-bold tracking-wide text-white uppercase dark:text-[#1c1c1e]">
+          {sev.label}
+        </span>
+        {al.acknowledged && <span className="ml-auto text-[11px] font-medium text-[#16a34a] dark:text-[#30d158]">reconhecido</span>}
+      </div>
+      <div className={cn("line-clamp-2 text-[13px] leading-snug font-semibold break-words", strong)}>{al.trigger}</div>
+      <div className={cn("truncate font-mono text-[11px]", muted)}>{al.host}</div>
+      {al.opdata && <div className={cn("truncate text-[11px]", muted)}>{al.opdata}</div>}
+      <div className="mt-auto flex items-end justify-between gap-2 pt-1">
+        <span className={cn("text-[11px] leading-tight", muted)}>desde {fmtClock(al.start)}</span>
+        <span className="text-[16px] leading-none font-bold text-[var(--sev)] tabular-nums">{fmtDuration(now - Date.parse(al.start))}</span>
+      </div>
+    </motion.li>
+  );
+}
+
+function DwdmResolved({ list }: { list: DwdmAlarm[] }) {
+  const [open, setOpen] = useState(false);
+  if (!list.length) return null;
+  return (
+    <div className="mt-3 border-t border-black/[.06] pt-3 dark:border-white/[.06]">
+      <button type="button" onClick={() => setOpen((o) => !o)} className={cn("flex w-full items-center gap-2 text-xs font-semibold", muted)}>
+        <IconCircleCheck className="h-4 w-4 text-[#16a34a] dark:text-[#30d158]" />
+        Normalizados nas últimas 24h · {list.length}
+        <IconChevronDown className={cn("ml-auto h-4 w-4 transition-transform", open && "rotate-180")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="flex flex-col gap-1 overflow-hidden pt-2"
+          >
+            {list.map((a) => (
+              <li
+                key={a.id}
+                style={sevVars(a.severity)}
+                className={cn(SEV_C, "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-black/[.03] dark:hover:bg-white/[.04]")}
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--sev)]" title={sevOf(a.severity).label} />
+                <span className={cn("min-w-0 flex-1 truncate font-medium", strong)} title={a.trigger}>
+                  {a.trigger} <span className={cn("font-mono font-normal", muted)}>· {a.host}</span>
+                </span>
+                <span className={cn("shrink-0 tabular-nums", muted)}>
+                  {fmtClock(a.start)} → {a.end ? fmtClock(a.end) : "—"}
+                  {a.end && ` · ${fmtDuration(Date.parse(a.end) - Date.parse(a.start))}`}
+                </span>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

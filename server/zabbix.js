@@ -5,7 +5,9 @@
    and tags: those go to the "leoalarms" collection (Amazon Leo dashboard);
    everything else is a route/segment event and goes to "netalarms"
    (home "Eventos na rede"), with the segment parsed from the router names
-   (see netevents.js).
+   (see netevents.js). Hosts of the Zabbix host group PADTEC (sent by the
+   media type as host_groups = {TRIGGER.HOSTGROUP.NAME}) are DWDM alarms:
+   they go to "dwdmalarms" (home "Alarmes DWDM Padtec") before any of that.
    ═══════════════════════════════════════ */
 'use strict';
 const fs     = require('fs');
@@ -71,6 +73,20 @@ function toISO(ts, date, time, offset) {
    the core interfaces facing Amazon ("Interface et-0/0/22 - Core: Amazon {SLZ501 - OCARA} down")
    carry the Leo site code but aren't a Leo circuit nor a segment */
 const DISCARD = [/\bCore:\s*Amazon\b/i];
+/* the host group that marks DWDM Padtec equipment; groups arrive as "A, B, C" */
+const DWDM_GROUP = (process.env.DWDM_GROUP || 'PADTEC').toUpperCase();
+function groupsOf(b) {
+  const g = b.host_groups || b.hostgroups || b.host_group || b.groups || '';
+  return (Array.isArray(g) ? g : String(g).split(/\s*,\s*/)).map((x) => String(x).trim()).filter(Boolean);
+}
+const isDwdm = (ev) => ev.groups.some((g) => g.toUpperCase() === DWDM_GROUP) ||
+  ev.tags.some((t) => /^(host_?group|group)$/i.test(t.tag) && t.value.toUpperCase() === DWDM_GROUP);
+
+/* collections the webhook writes to, and their meta records */
+const COLLS = ['leoalarms', 'netalarms', 'dwdmalarms'];
+const META = { leoalarms: 'leozbxmeta', netalarms: 'netzbxmeta', dwdmalarms: 'dwdmzbxmeta' };
+const TARGET = { leoalarms: 'amazon-leo', netalarms: 'trechos', dwdmalarms: 'dwdm-padtec' };
+
 const discarded = (ev) => DISCARD.some((re) => re.test(String(ev.trigger || '')));
 
 /* the Zabbix 'Test' button (and some operations) leave macros unresolved, e.g. '{HOST.HOST}' */
@@ -91,6 +107,7 @@ function handle(body, store) {
     severity: Math.max(0, Math.min(5, parseInt(b.severity, 10) || 0)),
     severityName: String(b.severity_name || ''),
     tags:     parseTags(b.tags),
+    groups:   groupsOf(b),
     url:      String(b.event_url || '')
   };
   if (!ev.eventId) throw new Error('event_id is required');
@@ -107,27 +124,29 @@ function handle(body, store) {
   const isRecovery = value === '0' || /^(resolved|ok|recovered|recovery)$/i.test(value) ||
     /^resolved$/i.test(String(b.event_status || b.status || '').trim()) ||
     !!(b.recovery_ts || b.recovery_date || b.recovery_id || b.event_recovery_id);
-  const m = match(ev);
+  const dwdm = isDwdm(ev);
+  const m = dwdm ? { site: null, circuit: null } : match(ev);
   const isLeo = !!(m.site || m.circuit);
   /* a real segment alarm always comes from a router (host); manual/webhook tests without one are dropped */
-  if (!isLeo && !ev.host && !ev.hostName) return { ok: true, ignored: 'segment event without host (test?)' };
-  const extra = isLeo ? m : net.parseSegment(ev);
+  if (!dwdm && !isLeo && !ev.host && !ev.hostName) return { ok: true, ignored: 'segment event without host (test?)' };
+  const extra = dwdm ? {} : isLeo ? m : net.parseSegment(ev);
 
   /* the collection this event belongs to; a recovery/update follows the problem
      wherever it was stored (e.g. received before the split existed) */
-  let coll = isLeo ? 'leoalarms' : 'netalarms';
+  let coll = dwdm ? 'dwdmalarms' : isLeo ? 'leoalarms' : 'netalarms';
   let list = store.read(coll);
   let rec = list.find((x) => x.eventId === ev.eventId);
   if (!rec) {
-    const other = isLeo ? 'netalarms' : 'leoalarms';
-    const olist = store.read(other);
-    const orec = olist.find((x) => x.eventId === ev.eventId);
-    if (orec) { coll = other; list = olist; rec = orec; }
+    for (const other of COLLS.filter((c) => c !== coll)) {
+      const olist = store.read(other);
+      const orec = olist.find((x) => x.eventId === ev.eventId);
+      if (orec) { coll = other; list = olist; rec = orec; break; }
+    }
   }
   /* a recovery whose id doesn't match (media type sending {EVENT.RECOVERY.ID}, for instance):
      close the open problem with the same host + trigger */
   if (!rec && isRecovery) {
-    for (const c of [coll, coll === 'netalarms' ? 'leoalarms' : 'netalarms']) {
+    for (const c of [coll, ...COLLS.filter((x) => x !== coll)]) {
       const l = c === coll ? list : store.read(c);
       const r = l.filter((x) => x.status === 'problem' && x.host === ev.host && x.trigger === ev.trigger)
         .sort((x, y) => String(y.start).localeCompare(String(x.start)))[0];
@@ -146,12 +165,14 @@ function handle(body, store) {
   } else {                                               /* new problem (or a repeat of one) */
     if (!rec) { rec = Object.assign({}, ev, extra, { status: 'problem', start: startISO }); list.push(rec); }
     else Object.assign(rec, ev, isLeo ? (m.site ? m : {}) : extra, { status: 'problem' });
+    /* severity can change while the problem is open (Zabbix "update") */
+    rec.severity = ev.severity; rec.severityName = ev.severityName;
   }
   rec.receivedAt = now;
 
   list.sort((a, c) => String(c.start).localeCompare(String(a.start)));
   store.write(coll, list.slice(0, coll === 'netalarms' ? net.MAX_EVENTS : MAX_EVENTS));
-  const metaName = coll === 'netalarms' ? 'netzbxmeta' : 'leozbxmeta';
+  const metaName = META[coll];
   const meta = store.read(metaName)[0] || { received: 0 };
   meta.received = (meta.received || 0) + 1;
   meta.lastReceivedAt = now;
@@ -160,8 +181,8 @@ function handle(body, store) {
   store.write(metaName, [meta]);
   /* one line per event, so `docker compose logs | grep zabbix:` shows what arrives and where it went */
   console.log('zabbix: event ' + ev.eventId + ' value=' + value + (update ? ' update' : '') + ' host=' + (ev.host || '-') +
-    ' → ' + (coll === 'netalarms' ? 'trechos' : 'amazon-leo') + ' ' + rec.status + (rec.eventId !== ev.eventId ? ' (closed ' + rec.eventId + ' by host+trigger)' : ''));
-  return { ok: true, eventId: rec.eventId, status: rec.status, target: coll === 'netalarms' ? 'trechos' : 'amazon-leo',
+    ' → ' + TARGET[coll] + ' ' + rec.status + (rec.eventId !== ev.eventId ? ' (closed ' + rec.eventId + ' by host+trigger)' : ''));
+  return { ok: true, eventId: rec.eventId, status: rec.status, target: TARGET[coll],
            site: rec.site, circuit: rec.circuit, segment: rec.key || null };
 }
 
@@ -250,4 +271,25 @@ function migrate(store) {
   return move.length;
 }
 
-module.exports = { loadToken, sameSecret, handle, publicStatus, metric, rxHistory, migrate };
+/* GET /api/network/dwdm — DWDM Padtec alarms (host group PADTEC): open ones and
+   those resolved in the last 24 h */
+function dwdmResponse(store) {
+  const meta = store.read('dwdmzbxmeta')[0] || null;
+  const since = Date.now() - 24 * 3600000;
+  const pub = (e) => ({
+    id: e.eventId, host: e.hostName || e.host, trigger: e.trigger, opdata: e.opdata || '',
+    severity: e.severity, severityName: e.severityName,
+    status: e.status === 'problem' ? 'active' : 'resolved',
+    acknowledged: !!e.acknowledged, start: e.start, end: e.end || null
+  });
+  const all = store.read('dwdmalarms');
+  return {
+    group: DWDM_GROUP,
+    receivingSince: meta ? meta.firstReceivedAt : null,
+    lastReceivedAt: meta ? meta.lastReceivedAt : null,
+    active: all.filter((e) => e.status === 'problem').map(pub),
+    resolved: all.filter((e) => e.status !== 'problem' && new Date(e.end || e.start).getTime() >= since).map(pub)
+  };
+}
+
+module.exports = { dwdmResponse, loadToken, sameSecret, handle, publicStatus, metric, rxHistory, migrate };
