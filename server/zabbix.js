@@ -280,7 +280,9 @@ function dwdmResponse(store) {
     id: e.eventId, host: e.hostName || e.host, trigger: e.trigger, opdata: e.opdata || '',
     severity: e.severity, severityName: e.severityName,
     status: e.status === 'problem' ? 'active' : 'resolved',
-    acknowledged: !!e.acknowledged, start: e.start, end: e.end || null
+    acknowledged: !!e.acknowledged,            /* acknowledged in Zabbix */
+    ackAt: e.portalAck || null,                /* acknowledged in the portal */
+    start: e.start, end: e.end || null
   });
   const all = store.read('dwdmalarms');
   return {
@@ -292,4 +294,17 @@ function dwdmResponse(store) {
   };
 }
 
-module.exports = { dwdmResponse, loadToken, sameSecret, handle, publicStatus, metric, rxHistory, migrate };
+/* POST /api/network/dwdm/ack {id, ack} — acknowledge (or undo) a DWDM alarm in the portal;
+   it stays acknowledged while the problem is open, even if Zabbix repeats it */
+function dwdmAck(body, store) {
+  const id = String((body && body.id) || '');
+  const list = store.read('dwdmalarms');
+  const rec = list.find((e) => e.eventId === id);
+  if (!rec) throw new Error('alarm not found');
+  rec.portalAck = body.ack === false ? null : new Date().toISOString();
+  store.write('dwdmalarms', list);
+  console.log('dwdm: alarm ' + id + (rec.portalAck ? ' acknowledged' : ' unacknowledged') + ' in the portal');
+  return { ok: true, id, ackAt: rec.portalAck };
+}
+
+module.exports = { dwdmAck, dwdmResponse, loadToken, sameSecret, handle, publicStatus, metric, rxHistory, migrate };

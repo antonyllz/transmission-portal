@@ -138,6 +138,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* DWDM Padtec: acknowledge in the portal (POST {id, ack: true|false}) */
+  if (url.pathname === '/api/network/dwdm/ack') {
+    if (req.method !== 'POST') { send(res, 405, { error: 'Use POST' }); return; }
+    readBody(req).then((body) => send(res, 200, zabbix.dwdmAck(body, store)))
+      .catch((e) => send(res, 400, { error: e.message }));
+    return;
+  }
+
   /* Zabbix webhook: POST /api/zabbix/webhook with the shared token (header X-Portal-Token or ?token=) */
   if (url.pathname === '/api/zabbix/webhook') {
     if (req.method !== 'POST') { send(res, 405, { error: 'Use POST' }); return; }

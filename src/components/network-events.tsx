@@ -5,6 +5,7 @@ import {
   IconAlertTriangle,
   IconChevronDown,
   IconX,
+  IconCheck,
   IconCircleCheck,
   IconClockHour4,
   IconBolt,
@@ -27,6 +28,8 @@ import {
   type Trecho,
   type DwdmAlarm,
   type ZbxSeverity,
+  ackDwdm,
+  dwdmAcked,
 } from "@/data/network-events";
 
 const REFRESH_MS = 15_000;
@@ -49,9 +52,11 @@ function useNetworkSnapshot() {
         });
     load();
     const t = setInterval(load, REFRESH_MS);
+    window.addEventListener("net-refresh", load);   /* e.g. right after acknowledging an alarm */
     return () => {
       alive = false;
       clearInterval(t);
+      window.removeEventListener("net-refresh", load);
     };
   }, []);
   return { snap, error };
@@ -105,7 +110,7 @@ export function NetworkEventsDashboard() {
 
   const down = snap.trechos.length;
   const padtecN = snap.padtecAlarms.length;
-  const dwdmN = snap.dwdm.active.length;
+  const dwdmN = snap.dwdm.active.filter((a) => !dwdmAcked(a)).length;
   const oldest = snap.trechos[0]?.since ?? null;
 
   return (
@@ -656,11 +661,42 @@ const sevVars = (n: number) => {
   return { "--sev-l": s.c, "--sev-d": s.d } as React.CSSProperties;
 };
 const SEV_C = "[--sev:var(--sev-l)] dark:[--sev:var(--sev-d)]";
+/* acknowledged = green */
+const ACK_VARS = { "--sev-l": "#16a34a", "--sev-d": "#30d158" } as React.CSSProperties;
 
 function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
-  const [filter, setFilter] = useState<ZbxSeverity | "all">("all");
-  const { active, resolved, ok, receivingSince, lastReceivedAt, group } = snap.dwdm;
-  const shown = filter === "all" ? active : active.filter((a) => a.severity === filter);
+  const [filter, setFilter] = useState<ZbxSeverity | "all" | "ack">("all");
+  /* optimistic acks (id → ackAt | null) until the next refresh brings them back */
+  const [local, setLocal] = useState<Record<string, string | null>>({});
+  useEffect(
+    () =>
+      setLocal((l) => {
+        /* forget the ones the server already reflects */
+        const keep = Object.entries(l).filter(([id, v]) => {
+          const a = snap.dwdm.active.find((x) => x.id === id);
+          return a && !!a.ackAt !== !!v;
+        });
+        return keep.length === Object.keys(l).length ? l : Object.fromEntries(keep);
+      }),
+    [snap],
+  );
+  const { resolved, ok, receivingSince, lastReceivedAt, group } = snap.dwdm;
+  const active = snap.dwdm.active.map((a) => (a.id in local ? { ...a, ackAt: local[a.id] } : a));
+  const open = active.filter((a) => !dwdmAcked(a));
+  const acked = active.filter(dwdmAcked);
+  const shown = filter === "ack" ? acked : filter === "all" ? open : open.filter((a) => a.severity === filter);
+  const ack = (id: string, v: boolean) => {
+    setLocal((l) => ({ ...l, [id]: v ? new Date().toISOString() : null }));
+    ackDwdm(id, v)
+      .then(() => window.dispatchEvent(new Event("net-refresh")))
+      .catch((e) => {
+      console.error(e);
+      setLocal((l) => {
+        const { [id]: _, ...rest } = l;
+        return rest;
+      });
+    });
+  };
   const status = !ok
     ? "API indisponível"
     : lastReceivedAt
@@ -668,9 +704,9 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
       : `Aguardando eventos do grupo ${group}`;
   return (
     <section className={cn(card, "p-5")}>
-      <PanelHead title="Alarmes DWDM Padtec" count={active.length} hint={`Zabbix · grupo ${group}`} />
+      <PanelHead title="Alarmes DWDM Padtec" count={open.length} hint={`Zabbix · grupo ${group}`} />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <SevChip active={filter === "all"} onClick={() => setFilter("all")} label="Todos" n={active.length} />
+        <SevChip active={filter === "all"} onClick={() => setFilter("all")} label="Todos" n={open.length} />
         {SEV_ORDER.map((k) => (
           <SevChip
             key={k}
@@ -678,16 +714,17 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
             active={filter === k}
             onClick={() => setFilter(filter === k ? "all" : k)}
             label={ZBX_SEV[k].label}
-            n={active.filter((a) => a.severity === k).length}
+            n={open.filter((a) => a.severity === k).length}
           />
         ))}
+        <SevChip ack active={filter === "ack"} onClick={() => setFilter(filter === "ack" ? "all" : "ack")} label="Reconhecidos" n={acked.length} />
         <span className={cn("ml-auto text-[11px]", ok ? muted : "text-[#ea580c]")}>{status}</span>
       </div>
       {shown.length ? (
         <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} mode="popLayout">
             {shown.map((a, i) => (
-              <DwdmCard key={a.id} al={a} now={now} i={i} />
+              <DwdmCard key={a.id} al={a} now={now} i={i} onAck={ack} />
             ))}
           </AnimatePresence>
         </ul>
@@ -695,11 +732,15 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
         <ul className="mt-3">
           <Empty
             text={
-              active.length
-                ? "Nenhum alarme com essa severidade"
-                : receivingSince
-                  ? "Nenhum alarme DWDM ativo"
-                  : `Nenhum evento do grupo ${group} recebido ainda`
+              filter === "ack"
+                ? "Nenhum alarme reconhecido"
+                : active.length
+                  ? open.length
+                    ? "Nenhum alarme com essa severidade"
+                    : "Todos os alarmes ativos foram reconhecidos"
+                  : receivingSince
+                    ? "Nenhum alarme DWDM ativo"
+                    : `Nenhum evento do grupo ${group} recebido ainda`
             }
           />
         </ul>
@@ -709,41 +750,58 @@ function DwdmPanel({ snap, now }: { snap: NetworkSnapshot; now: number }) {
   );
 }
 
-function SevChip({ sev, active, onClick, label, n }: { sev?: ZbxSeverity; active: boolean; onClick: () => void; label: string; n: number }) {
+function SevChip({
+  sev,
+  ack,
+  active,
+  onClick,
+  label,
+  n,
+}: {
+  sev?: ZbxSeverity;
+  ack?: boolean;
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  n: number;
+}) {
+  if (ack) sev = undefined;
+  const colored = sev !== undefined || ack;
   return (
     <button
       type="button"
       onClick={onClick}
-      style={sev !== undefined ? sevVars(sev) : undefined}
+      style={ack ? ACK_VARS : sev !== undefined ? sevVars(sev) : undefined}
       className={cn(
         SEV_C,
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
         active
-          ? sev === undefined
+          ? !colored
             ? "border-transparent bg-[#1d1d1f] text-white dark:bg-[#f5f5f7] dark:text-[#1d1d1f]"
             : "border-[var(--sev)] bg-[color-mix(in_srgb,var(--sev)_14%,transparent)] text-[#1d1d1f] dark:text-[#f5f5f7]"
           : "border-black/10 text-[#3a3a3c] hover:border-black/20 dark:border-white/10 dark:text-[#d1d1d6] dark:hover:border-white/25",
-        sev !== undefined && !n && !active && "opacity-45",
+        colored && !n && !active && "opacity-45",
       )}
     >
-      {sev !== undefined && <span className="h-2 w-2 rounded-full bg-[var(--sev)]" />}
+      {ack ? <IconCheck className="h-3.5 w-3.5 text-[var(--sev)]" stroke={3} /> : sev !== undefined && <span className="h-2 w-2 rounded-full bg-[var(--sev)]" />}
       {label} <b className="font-semibold opacity-50">{n}</b>
     </button>
   );
 }
 
-/* one alarm: the card is tinted with its severity color */
-function DwdmCard({ al, now, i }: { al: DwdmAlarm; now: number; i: number }) {
+/* one alarm: the card is tinted with its severity color — or green once acknowledged */
+function DwdmCard({ al, now, i, onAck }: { al: DwdmAlarm; now: number; i: number; onAck: (id: string, ack: boolean) => void }) {
   const sev = sevOf(al.severity);
-  const hot = al.severity >= 4;
+  const acked = dwdmAcked(al);
+  const hot = al.severity >= 4 && !acked;
   return (
     <motion.li
       layout
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1, transition: { delay: 0.03 * i } }}
-      exit={{ opacity: 0, scale: 0.94 }}
+      exit={{ opacity: 0, scale: 0.9, x: 24, transition: { duration: 0.28 } }}
       title={[al.trigger, al.host, al.opdata].filter(Boolean).join("\n")}
-      style={sevVars(al.severity)}
+      style={acked ? ACK_VARS : sevVars(al.severity)}
       className={cn(
         SEV_C,
         "relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--sev)_32%,transparent)] bg-[color-mix(in_srgb,var(--sev)_6%,transparent)] p-3 pt-3.5 transition-colors hover:border-[color-mix(in_srgb,var(--sev)_65%,transparent)] hover:bg-[color-mix(in_srgb,var(--sev)_10%,transparent)]",
@@ -755,19 +813,113 @@ function DwdmCard({ al, now, i }: { al: DwdmAlarm; now: number; i: number }) {
           {hot && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--sev)] opacity-60" />}
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--sev)]" />
         </span>
-        <span className="rounded-md bg-[var(--sev)] px-1.5 py-px text-[10px] font-bold tracking-wide text-white uppercase dark:text-[#1c1c1e]">
-          {sev.label}
+        {acked ? (
+          <>
+            <span className="inline-flex items-center gap-1 rounded-md bg-[var(--sev)] px-1.5 py-px text-[10px] font-bold tracking-wide text-white uppercase dark:text-[#1c1c1e]">
+              <IconCheck className="h-3 w-3" stroke={3} />
+              Reconhecido
+            </span>
+            {/* the severity stays readable, in its own color */}
+            <span style={sevVars(al.severity)} className={cn(SEV_C, "text-[10px] font-bold tracking-wide text-[var(--sev)] uppercase")}>
+              {sev.label}
+            </span>
+          </>
+        ) : (
+          <span className="rounded-md bg-[var(--sev)] px-1.5 py-px text-[10px] font-bold tracking-wide text-white uppercase dark:text-[#1c1c1e]">
+            {sev.label}
+          </span>
+        )}
+        <span className="ml-auto">
+          {!acked ? (
+            <AckButton onAck={() => onAck(al.id, true)} />
+          ) : al.ackAt && !al.acknowledged ? (
+            <button
+              type="button"
+              onClick={() => onAck(al.id, false)}
+              title={`Reconhecido às ${fmtClock(al.ackAt)} — clique para desfazer`}
+              className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium hover:bg-black/[.05] dark:hover:bg-white/10", muted)}
+            >
+              Desfazer
+            </button>
+          ) : (
+            <span className={cn("text-[11px]", muted)}>no Zabbix</span>
+          )}
         </span>
-        {al.acknowledged && <span className="ml-auto text-[11px] font-medium text-[#16a34a] dark:text-[#30d158]">reconhecido</span>}
       </div>
       <div className={cn("line-clamp-2 text-[13px] leading-snug font-semibold break-words", strong)}>{al.trigger}</div>
       <div className={cn("truncate font-mono text-[11px]", muted)}>{al.host}</div>
       {al.opdata && <div className={cn("truncate text-[11px]", muted)}>{al.opdata}</div>}
       <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-        <span className={cn("text-[11px] leading-tight", muted)}>desde {fmtClock(al.start)}</span>
+        <span className={cn("text-[11px] leading-tight", muted)}>
+          desde {fmtClock(al.start)}
+          {al.ackAt && <span className="block text-[var(--sev)]">reconhecido às {fmtClock(al.ackAt)}</span>}
+        </span>
         <span className="text-[16px] leading-none font-bold text-[var(--sev)] tabular-nums">{fmtDuration(now - Date.parse(al.start))}</span>
       </div>
     </motion.li>
+  );
+}
+
+/* green "Reconhecer" button: a light sweeps across it now and then; on click the
+   label gives way to a check that draws itself, a ring ripples out, and only then
+   the alarm moves to "Reconhecidos" */
+function AckButton({ onAck }: { onAck: () => void }) {
+  const [done, setDone] = useState(false);
+  const cb = useRef(onAck);
+  cb.current = onAck;
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => cb.current(), 650);
+    return () => clearTimeout(t);
+  }, [done]);
+  return (
+    <motion.button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        setDone(true);
+      }}
+      disabled={done}
+      aria-label="Reconhecer alarme"
+      title="Reconhecer alarme"
+      whileHover={done ? undefined : { scale: 1.06 }}
+      whileTap={done ? undefined : { scale: 0.92 }}
+      layout
+      className={cn(
+        "relative flex h-7 items-center justify-center overflow-hidden rounded-full bg-[#16a34a] text-[11px] font-semibold text-white shadow-[0_2px_8px_rgba(22,163,74,.35)] dark:bg-[#30d158] dark:text-[#0b2e16]",
+        done ? "w-7" : "gap-1 px-2.5",
+      )}
+    >
+      {/* light sweep */}
+      {!done && (
+        <motion.span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent"
+          initial={{ x: "-150%" }}
+          animate={{ x: "250%" }}
+          transition={{ duration: 1.1, repeat: Infinity, repeatDelay: 2.6, ease: "easeInOut" }}
+        />
+      )}
+      {/* ripple */}
+      {done && (
+        <motion.span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-full border-2 border-[#16a34a] dark:border-[#30d158]"
+          initial={{ scale: 1, opacity: 0.9 }}
+          animate={{ scale: 2.4, opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+      )}
+      <svg viewBox="0 0 24 24" className="relative h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+        <motion.path
+          d="M5 12.5l4.5 4.5L19 7.5"
+          initial={false}
+          animate={{ pathLength: done ? [0, 1] : 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+        />
+      </svg>
+      {!done && <span className="relative">Reconhecer</span>}
+    </motion.button>
   );
 }
 

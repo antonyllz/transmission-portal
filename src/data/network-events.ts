@@ -77,10 +77,23 @@ export type DwdmAlarm = {
   severity: ZbxSeverity;
   severityName: string;
   status: "active" | "resolved";
+  /** acknowledged in Zabbix */
   acknowledged: boolean;
+  /** acknowledged in the portal (when) */
+  ackAt: string | null;
   start: string;
   end: string | null;
 };
+export const dwdmAcked = (a: DwdmAlarm) => a.acknowledged || !!a.ackAt;
+export async function ackDwdm(id: string, ack: boolean) {
+  const r = await fetch("/api/network/dwdm/ack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, ack }),
+  });
+  if (!r.ok) throw new Error(`ack failed: ${r.status}`);
+  return (await r.json()) as { ok: boolean; ackAt: string | null };
+}
 export type DwdmData = {
   group: string;
   active: DwdmAlarm[];
