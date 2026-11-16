@@ -139,13 +139,12 @@ body { padding-bottom: var(--dock-space); }
 @keyframes di-crate { 0%, 22%, 78%, 100% { opacity: 0; transform: scale(.6); } 38%, 62% { opacity: 1; transform: none; } }
 
 /* Janelas: the clock hand sweeps, the slot fills in, the rings bob */
-/* origins in icon coordinates (view-box), not the element's own box (.di * uses fill-box):
-   the hand turns around the clock centre and stays inside the icon */
-.di-hand { transform-box: view-box; transform-origin: 17.5px 17.5px; animation: di-hand 6s linear infinite; }
-.di-slot { opacity: .25; transform-box: view-box; transform-origin: 7px 14px; animation: di-slot 6s ease-in-out infinite; }
+/* the hand is rotated by <animateTransform> around (17.5, 17.5) in icon coordinates: needs view-box
+   (.di * sets fill-box, which would move that centre off the clock) */
+.di .di-hand { transform-box: view-box; animation: none; }
+.di-slot { opacity: .25; transform-box: fill-box; transform-origin: 0 50%; animation: di-slot 6s ease-in-out infinite; }
 .di-ring { animation: di-ring 6s ease-in-out infinite; }
 .di-ring2 { animation-delay: .15s; }
-@keyframes di-hand { to { transform: rotate(360deg); } }
 @keyframes di-slot { 0%, 20% { opacity: .2; transform: scaleX(.3); } 45%, 80% { opacity: 1; transform: none; } 100% { opacity: .2; transform: scaleX(.3); } }
 @keyframes di-ring { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-1.2px); } 86% { transform: none; } }
 
@@ -156,7 +155,7 @@ body { padding-bottom: var(--dock-space); }
 .dock-item:is(:hover, :focus-visible) :is(.di-line, .di-fold, .di-sign, .di-trace) { animation-duration: 1.8s; }
 .dock-item:is(:hover, :focus-visible) :is(.di-slats, .di-crate) { animation-duration: 2s; }
 .dock-item:is(:hover, :focus-visible) .di-smoke { animation-duration: 1.4s; }
-.dock-item:is(:hover, :focus-visible) :is(.di-hand, .di-slot, .di-ring) { animation-duration: 2s; }
+.dock-item:is(:hover, :focus-visible) :is(.di-slot, .di-ring) { animation-duration: 2s; }
 .dock-item:is(:hover, :focus-visible) .di-smoke2 { animation-delay: .7s; }
 
 @media (prefers-reduced-motion: reduce) {

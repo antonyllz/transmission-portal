@@ -107,6 +107,10 @@ export const WindowIcon = () => (
     <path d="M4 10h16" />
     <rect className="di-slot" x="7" y="12.6" width="5" height="3" rx=".6" fill="currentColor" stroke="none" />
     <circle cx="17.5" cy="17.5" r="4" />
-    <path className="di-hand" d="M17.5 15.6v1.9l1.3.9" />
+    {/* the hand turns around the clock centre (17.5, 17.5) given in icon coordinates,
+        so it can't drift off the icon whatever transform-box the browser applies */}
+    <path className="di-hand" d="M17.5 15.6v1.9l1.3.9">
+      <animateTransform attributeName="transform" type="rotate" from="0 17.5 17.5" to="360 17.5 17.5" dur="6s" repeatCount="indefinite" />
+    </path>
   </svg>
 );
