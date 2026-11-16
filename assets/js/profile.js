@@ -47,12 +47,6 @@ function setNotifyDesktop(on) {
   });
 }
 /* clipboard also on plain HTTP (navigator.clipboard needs HTTPS) */
-function _testNotify(btn) {
-  var msg = typeof xcTest === 'function' ? xcTest() : '';
-  var el = document.getElementById('settings-test-msg');
-  if (el) el.textContent = msg || '';
-  btn.classList.remove('ring'); void btn.offsetWidth; btn.classList.add('ring');
-}
 function _copyText(text, btn) {
   var ta = document.createElement('textarea');
   ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -181,10 +175,6 @@ function _renderSettings(desktopMsg) {
       '<div class="settings-help">No Chrome/Edge, abra <code>' + (/edg\//i.test(navigator.userAgent) ? 'edge' : 'chrome') + '://flags/#unsafely-treat-insecure-origin-as-secure</code>, ' +
         'coloque <code>' + esc(location.origin) + '</code>, mude para <b>Enabled</b> e reinicie o navegador. Depois ligue a opção acima.' +
         '<button class="settings-copy" onclick="_copyText(location.origin, this)">Copiar endereço</button></div>') +
-      '<button class="settings-test" onclick="_testNotify(this)">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' +
-        'Testar notificação</button>' +
-      '<div class="settings-test-msg" id="settings-test-msg"></div>' +
       '<div class="settings-sub-lbl">Avisar sobre</div>' +
       Object.keys(NOTIFY_KINDS).map(function(k) {
         return '<div class="settings-row settings-row-sm"><div class="settings-row-label">' + NOTIFY_KINDS[k] + '</div>' +

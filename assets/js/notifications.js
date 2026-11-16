@@ -193,7 +193,6 @@ function tickNotifDemandTimers() {
    ═══════════════════════════════ */
 var XC_POLL_MS = 20000;
 var XC_KEEP = 800;
-var XC_FIRST_MS = 15 * 60000;   /* first visit: announce what started in the last 15 min */
 var xcEvents = [];          /* last 24 h, newest first (from the server) */
 var NOTIFY_KINDS = {
   trechos: 'Trechos',
@@ -260,21 +259,12 @@ function xcPoll() {
   _apiGet('/notify/feed?hours=24').then(function(d) {
     xcEvents = (d && d.events) || [];
     var seen = _xcLoad('net_ntf_seen');
-    var first = !seen;
+    var first = !seen;                                     /* first visit: don't announce the past */
     seen = seen || [];
     var fresh = xcEvents.filter(function(e) { return seen.indexOf(e.id) < 0; });
-    if (!fresh.length) { if (notifOpen) renderNotifXc(); return; }
+    if (!fresh.length && !first) { if (notifOpen) renderNotifXc(); return; }
     _xcStore('net_ntf_seen', fresh.map(function(e) { return e.id; }).concat(seen).slice(0, XC_KEEP));
-    /* first visit in this browser: announce only what happened in the last XC_FIRST_MS
-       (an outage that just started), not the whole 24 h */
-    if (first) fresh = fresh.filter(function(e) { return Date.now() - Date.parse(e.at) <= XC_FIRST_MS; });
-    xcAnnounce(fresh);
-  }).catch(function() {});
-}
-
-/* toast + bell + beep + desktop for a list of new events (newest first) */
-function xcAnnounce(fresh) {
-    if (!fresh.length) { if (notifOpen) renderNotifXc(); return; }
+    if (first) { if (notifOpen) renderNotifXc(); return; }
     var st = typeof settingsGet === 'function' ? settingsGet() : { notify: true };
     fresh = fresh.filter(function(e) { return xcKindOn(st, e.kind); });
     if (!fresh.length) return;
@@ -297,22 +287,7 @@ function xcAnnounce(fresh) {
       });
       if (fresh.length > 3) xcDesktop('+' + (fresh.length - 3) + ' eventos na rede', 'Abra o portal para ver todos', 'ntf-more', false, function() { xcGo(); });
     }
-}
-
-/* Settings → "Testar notificação": a sample alert through every channel (not stored as unread) */
-function xcTest() {
-  var e = { id: 'test-' + Date.now(), at: new Date().toISOString(), kind: 'trechos', level: 'down', route: '',
-    title: 'Teste · Trecho down', body: 'Notificação de teste do Transmission Portal — está tudo funcionando' };
-  var st = typeof settingsGet === 'function' ? settingsGet() : {};
-  xcToast(e);
-  if (st.notifySound !== false) xcBeep('down');
-  var bell = document.getElementById('notif-bell');
-  if (bell) { bell.classList.remove('bell-ring'); void bell.offsetWidth; bell.classList.add('bell-ring'); }
-  if (!('Notification' in window) || !window.isSecureContext) return 'Aviso na tela ok. Área de trabalho indisponível: o navegador exige HTTPS (veja abaixo).';
-  if (Notification.permission !== 'granted') return 'Aviso na tela ok. Área de trabalho: permissão ' + (Notification.permission === 'denied' ? 'bloqueada no navegador.' : 'ainda não concedida — ligue a opção acima.');
-  if (!st.notifyDesktop) return 'Aviso na tela ok. A opção "Notificações na área de trabalho" está desligada.';
-  xcDesktop(e.title, e.body, e.id, false, function() {});
-  return 'Enviado. Se não apareceu no Windows, confira Configurações do Windows → Notificações → Chrome/Edge e o "Não perturbe".';
+  }).catch(function() {});
 }
 
 /* on-screen toast (top right, under the top bar) */

@@ -85,8 +85,7 @@ Port transitions: `GET /api/leo/ifmon/events`.
 **Notifications:** `GET /api/notify/feed` (`server/notify.js`) merges every network transition — trechos
 down/normalized, DWDM Padtec, infra Padtec (NMS), Amazon Leo alarms and cross-connect ports — and every
 open portal checks it every 20 s: toast, bell section (unread badge), a short beep and the desktop
-notification. Settings → Notificações turns each one on/off, per kind, and has a "Testar notificação" button. On the first visit
-in a browser only events from the last 15 min are announced (the rest of the 24 h is marked as seen). Desktop notifications need a
+notification. Settings → Notificações turns each one on/off, per kind. Desktop notifications need a
 secure origin: over plain HTTP enable `chrome://flags/#unsafely-treat-insecure-origin-as-secure` for the
 portal address (Settings shows how). Times follow Settings → Horário (UTC-3 by default, or UTC).
 The community comes from env `SNMP_COMMUNITY` or `data/snmp-community.txt` (never committed); every
