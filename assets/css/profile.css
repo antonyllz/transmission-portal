@@ -86,6 +86,22 @@
 }
 .theme-opt.active svg { transform: scale(1.1); }
 
+/* ── ON/OFF SWITCH ── */
+.set-switch {
+  position: relative; width: 40px; height: 24px; flex-shrink: 0;
+  border: none; border-radius: 12px; background: #d1d1d6; cursor: pointer;
+  padding: 0; transition: background .2s;
+}
+.set-switch i {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.set-switch.on { background: #34c759; }
+.set-switch.on i { transform: translateX(16px); }
+.set-switch:disabled { opacity: .4; cursor: not-allowed; }
+[data-theme="dark"] .set-switch:not(.on) { background: #3a3a3c; }
+
 /* ════════════════════════════
    DARK MODE — Variables
    ════════════════════════════ */

@@ -8,7 +8,7 @@ var notifOpen = false;
 function updateBadge() {
   var badge = document.getElementById('notif-badge');
   if (!badge) return;
-  var n = dbGetAll().length;
+  var n = dbGetAll().length + xcUnread().length;
   badge.textContent = n > 9 ? '9+' : String(n);
   badge.className   = 'notif-badge' + (n > 0 ? ' visible' : '');
 }
@@ -29,6 +29,8 @@ function toggleNotif(e) {
 
   renderNotifDemands();
   renderNotifList();
+  renderNotifXc();
+  xcClearToasts();
   document.getElementById('notif-panel').classList.add('open');
   document.getElementById('notif-backdrop').classList.add('open');
   notifOpen = true;
@@ -180,3 +182,128 @@ function tickNotifDemandTimers() {
     el.style.color = rem <= 0 ? '#aeaeb2' : (rem < 1800 ? '#dc2626' : bar);
   });
 }
+
+/* ═══════════════════════════════
+   CROSS-CONNECT ALERTS — every 20 s the portal asks the server for the
+   port transitions of the Amazon Leo cross-connect (GET /api/leo/ifmon/events)
+   and announces the new ones: toast on screen, item under the bell and, if
+   enabled in Settings, the browser's own notification.
+   Seen / unread ids live in localStorage (per browser).
+   ═══════════════════════════════ */
+var XC_POLL_MS = 20000;
+var XC_KEEP = 200;
+var xcEvents = [];          /* last 24 h, newest first (from the server) */
+
+function _xcLoad(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e) { return null; } }
+function _xcStore(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { /* private mode */ } }
+function xcUnread() { return _xcLoad('net_xc_unread') || []; }
+
+/* "16 Nov 14:05:12 UTC-3" in the zone chosen in Settings */
+function xcFmt(iso) {
+  var tz = typeof portalTz === 'function' ? portalTz() : 'UTC-3';
+  var d = new Date(Date.parse(iso) - (tz === 'UTC' ? 0 : 3 * 3600000));
+  var p = function(n) { return String(n).padStart(2, '0'); };
+  return p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds()) + ' ' + tz;
+}
+function xcDur(ms) {
+  if (ms == null) return '';
+  var s = Math.round(ms / 1000);
+  return s < 60 ? s + ' s' : s < 3600 ? Math.floor(s / 60) + ' min ' + (s % 60) + ' s' : Math.floor(s / 3600) + ' h ' + Math.floor(s % 3600 / 60) + ' min';
+}
+function xcText(e) {
+  var what = e.type === 'down' ? (e.status === 'admin-down' ? 'desativada (admin down)' : 'caiu')
+    : e.type === 'up' ? 'voltou' + (e.dur != null ? ' após ' + xcDur(e.dur) : '')
+    : 'flapou';
+  return {
+    title: (e.type === 'down' ? 'DOWN' : e.type === 'up' ? 'UP' : 'FLAP') + ' · ' + e.short + ' ' + e.ifName,
+    body: 'Porta ' + e.side + ' ' + what + ' — ' + e.path,
+    when: xcFmt(e.at)
+  };
+}
+
+function xcPoll() {
+  if (typeof _apiGet !== 'function') return;
+  _apiGet('/leo/ifmon/events?hours=24').then(function(d) {
+    xcEvents = (d && d.events) || [];
+    var seen = _xcLoad('net_xc_seen');
+    var first = !seen;                                     /* first visit: don't announce the past */
+    seen = seen || [];
+    var fresh = xcEvents.filter(function(e) { return seen.indexOf(e.id) < 0; });
+    if (!fresh.length && !first) return;
+    _xcStore('net_xc_seen', fresh.map(function(e) { return e.id; }).concat(seen).slice(0, XC_KEEP));
+    if (first) return;
+    var unread = fresh.map(function(e) { return e.id; }).concat(xcUnread()).slice(0, XC_KEEP);
+    _xcStore('net_xc_unread', unread);
+    updateBadge();
+    if (notifOpen) renderNotifXc();
+    var st = typeof settingsGet === 'function' ? settingsGet() : { notify: true };
+    if (!st.notify) return;
+    fresh.slice(0, 4).reverse().forEach(function(e, i) { setTimeout(function() { xcToast(e); }, i * 350); });
+    if (fresh.length > 4) setTimeout(function() { xcToast(null, fresh.length - 4); }, 4 * 350);
+    var bell = document.getElementById('notif-bell');
+    if (bell) { bell.classList.remove('bell-ring'); void bell.offsetWidth; bell.classList.add('bell-ring'); }
+    if (st.notifyDesktop && 'Notification' in window && Notification.permission === 'granted') {
+      fresh.slice(0, 3).forEach(function(e) {
+        var t = xcText(e);
+        try {
+          var n = new Notification(t.title, { body: t.body + '\n' + t.when, tag: e.id, icon: 'assets/images/favicon.svg', requireInteraction: e.type === 'down' });
+          n.onclick = function() { window.focus(); xcGo(); n.close(); };
+        } catch(err) { /* some browsers only allow it from a service worker */ }
+      });
+    }
+  }).catch(function() {});
+}
+
+/* on-screen toast (top right, under the top bar) */
+function xcToast(e, more) {
+  var host = document.getElementById('xc-toasts');
+  if (!host) { host = document.createElement('div'); host.id = 'xc-toasts'; host.className = 'xc-toasts'; document.body.appendChild(host); }
+  var el = document.createElement('div');
+  if (!e) {
+    el.className = 'xc-toast more';
+    el.innerHTML = '<div class="xc-t-body"><b>+' + more + ' eventos</b><span>Veja no sino de notificações</span></div>';
+  } else {
+    var t = xcText(e);
+    el.className = 'xc-toast ' + e.type;
+    el.innerHTML = '<i class="xc-t-dot"></i><div class="xc-t-body"><b>' + esc(t.title) + '</b><span>' + esc(t.body) + '</span><small>' + esc(t.when) + '</small></div>'
+      + '<button class="xc-t-x" aria-label="Fechar">&times;</button>';
+  }
+  var close = function() { el.classList.add('out'); setTimeout(function() { el.remove(); }, 260); };
+  el.addEventListener('click', function(ev) { if (ev.target.closest('.xc-t-x')) { close(); return; } close(); xcGo(); });
+  host.appendChild(el);
+  setTimeout(close, e && e.type === 'down' ? 30000 : 12000);
+}
+
+function xcClearToasts() {
+  document.querySelectorAll('.xc-toast').forEach(function(t) { t.classList.add('out'); setTimeout(function() { t.remove(); }, 260); });
+}
+
+function xcGo() {
+  closeNotif();
+  var pg = document.getElementById('pg-leo-dash');
+  if (!pg || !pg.classList.contains('active')) { if (typeof openLeoDash === 'function') openLeoDash(); }
+  setTimeout(function() { var el = document.querySelector('.ldb-path-slot'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 400);
+}
+
+/* panel section */
+function renderNotifXc() {
+  var sec = document.getElementById('notif-xc-section'), list = document.getElementById('notif-xc-list');
+  if (!sec || !list) return;
+  var unread = xcUnread();
+  var items = xcEvents.slice(0, 15);
+  sec.style.display = items.length ? '' : 'none';
+  list.innerHTML = items.map(function(e, i) {
+    var t = xcText(e);
+    return '<div class="notif-item xc-item' + (unread.indexOf(e.id) >= 0 ? ' unread' : '') + '" onclick="xcGo()" style="animation-delay:' + (i * 0.04) + 's">'
+      + '<span class="notif-dot xc-' + e.type + '"></span>'
+      + '<div class="notif-info"><div class="notif-ticket">' + esc(t.title) + '</div>'
+      + '<div class="notif-sub">' + esc(t.body) + '</div><div class="notif-sub">' + esc(t.when) + '</div></div></div>';
+  }).join('');
+}
+function xcMarkRead() {
+  _xcStore('net_xc_unread', []);
+  updateBadge();
+  renderNotifXc();
+}
+
+setTimeout(function() { xcPoll(); setInterval(xcPoll, XC_POLL_MS); }, 1500);

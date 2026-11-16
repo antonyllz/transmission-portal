@@ -111,6 +111,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/leo/ifmon/events' && req.method === 'GET') { send(res, 200, ifmon.events(Object.fromEntries(url.searchParams), store)); return; }
   if (url.pathname === '/api/leo/ifmon' && req.method === 'GET') { send(res, 200, ifmon.response(Object.fromEntries(url.searchParams), store)); return; }
 
   if (url.pathname === '/api/leo/rx') {

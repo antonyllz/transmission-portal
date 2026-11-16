@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════
    CROSS-CONNECT MONITOR — the router ports that carry an Amazon Leo circuit
-   through our network, read over SNMP v2c every minute (IFMON_INTERVAL) and
+   through our network, read over SNMP v2c every 20 s (IFMON_INTERVAL) and
    shown on the Amazon Leo dashboard as one path.
 
    SLZ501 ↔ Equinix SP4 (SPOOCR964174) crosses two CCCs (circuit cross-connects):
@@ -52,7 +52,7 @@ const PATHS = [
   }
 ];
 
-const KEEP_MS = 7 * 86400000;           /* history: 7 days at 1 min */
+const KEEP_MS = 7 * 86400000;           /* history: 7 days at 20 s */
 const MAX_EVENTS = 500;
 const AGENT_GRACE = 30000;              /* ticks (5 min): an ifLastChange this close to the agent start = "before it" */
 const SYS_UPTIME = '1.3.6.1.2.1.1.3.0';
@@ -190,7 +190,7 @@ async function pollHop(p, hop, community, store, opts) {
 function start(dataDir, store) {
   const community = loadCommunity(dataDir);
   if (!community) { console.log('Cross-connect monitor off (no SNMP_COMMUNITY / snmp-community.txt)'); return; }
-  const every = (+process.env.IFMON_INTERVAL || 60) * 1000;
+  const every = (+process.env.IFMON_INTERVAL || 20) * 1000;
   const test = process.env.IFMON_TEST_PORT;   /* tests: every router is a fake agent on 127.0.0.1:<port + hop> */
   const opts = (k) => (test ? { port: +test + k, timeout: 1500, retries: 0 } : { timeout: 4000, retries: 1 });
   const hostOf = (h) => (test ? Object.assign({}, h, { ip: '127.0.0.1' }) : h);
@@ -250,4 +250,21 @@ function response(q, store) {
   };
 }
 
-module.exports = { start, response, PATHS };
+/* GET /api/leo/ifmon/events?hours=24 — just the transitions (newest first), for the portal notifications */
+function events(q, store) {
+  const hours = Math.min(168, Math.max(1, parseInt(q.hours, 10) || 24));
+  const from = Date.now() - hours * 3600000;
+  const recs = store.read('ifmon'), out = [];
+  for (const p of PATHS) for (const h of p.hops) for (const pt of h.ports) {
+    const r = recs.find((x) => x.id === p.id + ':' + pt.key);
+    for (const e of (r && r.events) || []) {
+      if (Date.parse(e.at) < from) continue;
+      out.push({ id: p.id + ':' + pt.key + ':' + e.type + ':' + e.at, at: e.at, type: e.type, status: e.status, dur: e.dur ?? null,
+        path: p.title, site: p.site, router: h.router, short: h.short, ifName: pt.ifName, side: pt.side });
+    }
+  }
+  out.sort((a, b) => b.at.localeCompare(a.at));
+  return { generatedAt: new Date().toISOString(), events: out };
+}
+
+module.exports = { start, response, events, PATHS };

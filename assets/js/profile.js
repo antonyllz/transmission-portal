@@ -2,11 +2,46 @@
    SETTINGS
    ═══════════════════════════════ */
 
+var SETTINGS_DEFAULTS = { theme: 'system', tz: 'UTC-3', notify: true, notifyDesktop: false };
 function settingsGet() {
-  try { return JSON.parse(localStorage.getItem('net_settings') || '{"theme":"system"}'); }
-  catch(e) { return { theme: 'system' }; }
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem('net_settings') || '{}') || {}; } catch(e) { s = {}; }
+  Object.keys(SETTINGS_DEFAULTS).forEach(function(k) { if (s[k] === undefined) s[k] = SETTINGS_DEFAULTS[k]; });
+  if (s.tz !== 'UTC') s.tz = 'UTC-3';
+  return s;
 }
-function settingsSave(s) { localStorage.setItem('net_settings', JSON.stringify(s)); }
+function settingsSave(s) { try { localStorage.setItem('net_settings', JSON.stringify(s)); } catch(e) { /* private mode */ } }
+
+/* ── Time zone for the times shown in the portal: 'UTC-3' (Brasília, default) | 'UTC' ── */
+function portalTz() { return settingsGet().tz; }
+function setTz(tz) {
+  var s = settingsGet();
+  s.tz = tz === 'UTC' ? 'UTC' : 'UTC-3';
+  settingsSave(s);
+  _renderSettings();
+  window.dispatchEvent(new CustomEvent('portal-tz', { detail: s.tz }));
+}
+
+/* ── Notifications: alerts inside the portal + (optionally) the browser's own ── */
+function setNotify(on) {
+  var s = settingsGet(); s.notify = !!on; settingsSave(s); _renderSettings();
+}
+function setNotifyDesktop(on) {
+  var s = settingsGet();
+  if (!on) { s.notifyDesktop = false; settingsSave(s); _renderSettings(); return; }
+  if (!('Notification' in window) || !window.isSecureContext) { _renderSettings('Este navegador só permite notificações do sistema em HTTPS ou localhost — os alertas aparecem dentro do portal.'); return; }
+  Notification.requestPermission().then(function(p) {
+    var t = settingsGet();
+    t.notifyDesktop = p === 'granted';
+    settingsSave(t);
+    _renderSettings(p === 'granted' ? '' : 'Permissão negada no navegador — libere as notificações para este site.');
+    if (p === 'granted') try { new Notification('Transmission Portal', { body: 'Notificações ativadas', icon: 'assets/images/favicon.svg' }); } catch(e) {}
+  });
+}
+function _switch(on, fn, disabled) {
+  return '<button class="set-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + on + '"' + (disabled ? ' disabled' : '')
+    + ' onclick="' + fn + '(' + !on + ')"><i></i></button>';
+}
 
 /* ── Theme: 'light' | 'dark' | 'system' (follows the OS and updates live) ── */
 var _darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -53,8 +88,10 @@ function closeSidePanels() {
   _settingsOpen = false;
 }
 
-function _renderSettings() {
+function _renderSettings(desktopMsg) {
   var s = settingsGet();
+  var canDesktop = ('Notification' in window) && window.isSecureContext;
+  var desktopOn = s.notifyDesktop && canDesktop && Notification.permission === 'granted';
 
   document.getElementById('settings-body').innerHTML =
     '<div class="settings-block">' +
@@ -85,6 +122,30 @@ function _renderSettings() {
             'Sistema' +
           '</button>' +
         '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="settings-block">' +
+      '<div class="settings-section-lbl">Horário</div>' +
+      '<div class="settings-row" style="flex-direction:column;align-items:stretch;gap:10px;">' +
+        '<div><div class="settings-row-label">Fuso dos horários</div>' +
+        '<div class="settings-row-desc">Usado nas dashboards e notificações (Amazon Leo, cross-connect)</div></div>' +
+        '<div class="theme-switcher">' +
+          '<button class="theme-opt' + (s.tz === 'UTC-3' ? ' active' : '') + '" onclick="setTz(\'UTC-3\')">UTC-3 · Brasília</button>' +
+          '<button class="theme-opt' + (s.tz === 'UTC' ? ' active' : '') + '" onclick="setTz(\'UTC\')">UTC</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="settings-block">' +
+      '<div class="settings-section-lbl">Notificações</div>' +
+      '<div class="settings-row">' +
+        '<div><div class="settings-row-label">Alertas no portal</div>' +
+        '<div class="settings-row-desc">Aviso na tela e no sino quando uma porta do cross-connect cai, volta ou flapa</div></div>' +
+        _switch(s.notify, 'setNotify') +
+      '</div>' +
+      '<div class="settings-row">' +
+        '<div><div class="settings-row-label">Notificações do sistema</div>' +
+        '<div class="settings-row-desc">' + (desktopMsg ? esc(desktopMsg) : canDesktop ? 'Aparecem mesmo com o portal em outra aba' : 'Disponível só em HTTPS ou localhost') + '</div></div>' +
+        _switch(desktopOn, 'setNotifyDesktop', !s.notify || !canDesktop) +
       '</div>' +
     '</div>';
 }

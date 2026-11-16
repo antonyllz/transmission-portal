@@ -18,10 +18,10 @@ var LDB_CIRCUITS = [
 ];
 var LDB_RANGES = { '1': 'Last 24 hours', '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days' };
 
-var ldb = { data: null, site: 'SLZ501', range: 30, tz: 'UTC', timer: 0, tick: 0 };
+var ldb = { data: null, site: 'SLZ501', range: 30, tz: portalTz(), timer: 0, tick: 0 };
 
 function openLeoDash() {
-  ldb.range = 30; ldb.tz = 'UTC';   /* defaults every time the dashboard is opened */
+  ldb.range = 30; ldb.tz = portalTz();   /* range resets every time; the time zone comes from Settings */
   showPage('pg-leo-dash');
   ldbIf.hours = 24; ldbIf.sig = '';
   ldbRender();
@@ -100,7 +100,6 @@ function ldbSla(c) {
 function ldbRender() {
   document.querySelectorAll('#ldb-site button').forEach(function(b) { b.classList.toggle('sel', b.dataset.v === ldb.site); });
   document.querySelectorAll('#ldb-range button').forEach(function(b) { b.classList.toggle('sel', +b.dataset.v === ldb.range); });
-  document.querySelectorAll('#ldb-tz button').forEach(function(b) { b.classList.toggle('sel', b.dataset.v === ldb.tz); });
   var sites = Object.keys(LDB_SITES).filter(function(s) { return ldb.site === 'ALL' || s === ldb.site; });
   document.getElementById('ldb-body').innerHTML = sites.map(function(sid) {
     var cs = LDB_CIRCUITS.filter(function(c) { return c.site === sid; }), states = cs.map(ldbState);
@@ -188,6 +187,16 @@ function ldbTick() {
 }
 
 function ldbSet(k, v) { ldb[k] = k === 'range' ? +v : v; ldbRender(); }
+
+/* time zone changed in Settings: redraw what is open */
+window.addEventListener('portal-tz', function(e) {
+  ldb.tz = e.detail;
+  var pg = document.getElementById('pg-leo-dash');
+  if (!pg || !pg.classList.contains('active')) return;
+  ldbRender();
+  if (typeof ldbTick === 'function') ldbTick();
+  if (document.getElementById('ldb-rxm') && ldbRx.data) ldbRxDraw && ldbRxDraw();
+});
 
 /* ═══════════════════════════════
    Rx power history window (GET /api/leo/rx): line chart in dBm,

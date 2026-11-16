@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', function() {
     bell.addEventListener('animationend', function() { bell.classList.remove('bell-ring'); }, { once: true });
     renderNotifDemands();
     renderNotifListWithSkeleton();
+    renderNotifXc();
+    xcClearToasts();
     document.getElementById('notif-panel').classList.add('open');
     document.getElementById('notif-backdrop').classList.add('open');
     notifOpen = true;
