@@ -139,8 +139,10 @@ body { padding-bottom: var(--dock-space); }
 @keyframes di-crate { 0%, 22%, 78%, 100% { opacity: 0; transform: scale(.6); } 38%, 62% { opacity: 1; transform: none; } }
 
 /* Janelas: the clock hand sweeps, the slot fills in, the rings bob */
-.di-hand { transform-origin: 17.5px 17.5px; animation: di-hand 6s linear infinite; }
-.di-slot { opacity: .25; transform-origin: 7px 14px; animation: di-slot 6s ease-in-out infinite; }
+/* origins in icon coordinates (view-box), not the element's own box (.di * uses fill-box):
+   the hand turns around the clock centre and stays inside the icon */
+.di-hand { transform-box: view-box; transform-origin: 17.5px 17.5px; animation: di-hand 6s linear infinite; }
+.di-slot { opacity: .25; transform-box: view-box; transform-origin: 7px 14px; animation: di-slot 6s ease-in-out infinite; }
 .di-ring { animation: di-ring 6s ease-in-out infinite; }
 .di-ring2 { animation-delay: .15s; }
 @keyframes di-hand { to { transform: rotate(360deg); } }
