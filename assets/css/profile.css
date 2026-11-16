@@ -101,6 +101,17 @@
 .set-switch.on i { transform: translateX(16px); }
 .set-switch:disabled { opacity: .4; cursor: not-allowed; }
 [data-theme="dark"] .set-switch:not(.on) { background: #3a3a3c; }
+.settings-test {
+  display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: 10px;
+  padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(6,73,252,.25); background: #f0f4ff;
+  color: #0649fc; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.settings-test:hover { background: #e3ebff; }
+.settings-test.ring svg { animation: bell-ring .75s cubic-bezier(.36,.07,.19,.97); }
+.settings-test-msg { font-size: 11.5px; color: #6e6e73; margin-top: 6px; line-height: 1.45; }
+.settings-test-msg:empty { display: none; }
+[data-theme="dark"] .settings-test { background: rgba(6,73,252,.14); border-color: rgba(6,73,252,.4); color: #8fb0ff; }
+[data-theme="dark"] .settings-test-msg { color: #aeaeb2; }
 .settings-sub-lbl { font-size: 11px; font-weight: 600; color: #8e8e93; margin: 14px 0 2px; }
 .settings-row-sm { padding: 7px 0; }
 .settings-row-sm .settings-row-label { font-size: 13px; }
