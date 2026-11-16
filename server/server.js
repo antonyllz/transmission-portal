@@ -55,6 +55,7 @@ const store     = { read: readCollection, write: writeCollection };
 const netevents  = require('./netevents');
 const padtec     = require('./padtec');
 const ifmon      = require('./ifmon');
+const notify     = require('./notify');
 const leofeed    = require('./leofeed');
 const janelas    = require('./janelas');
 const FEED_TOKEN = leofeed.loadFeedToken(DATA_DIR);
@@ -111,6 +112,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/notify/feed' && req.method === 'GET') { send(res, 200, notify.feed(Object.fromEntries(url.searchParams), store, ifmon)); return; }
   if (url.pathname === '/api/leo/ifmon/events' && req.method === 'GET') { send(res, 200, ifmon.events(Object.fromEntries(url.searchParams), store)); return; }
   if (url.pathname === '/api/leo/ifmon' && req.method === 'GET') { send(res, 200, ifmon.response(Object.fromEntries(url.searchParams), store)); return; }
 

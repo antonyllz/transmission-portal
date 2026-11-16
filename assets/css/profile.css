@@ -101,6 +101,20 @@
 .set-switch.on i { transform: translateX(16px); }
 .set-switch:disabled { opacity: .4; cursor: not-allowed; }
 [data-theme="dark"] .set-switch:not(.on) { background: #3a3a3c; }
+.settings-sub-lbl { font-size: 11px; font-weight: 600; color: #8e8e93; margin: 14px 0 2px; }
+.settings-row-sm { padding: 7px 0; }
+.settings-row-sm .settings-row-label { font-size: 13px; }
+.settings-help {
+  margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; background: #f5f7ff; border: 1px solid #e3e9ff;
+  font-size: 11.5px; line-height: 1.5; color: #48484a;
+}
+.settings-help code { font-size: 11px; background: #fff; border: 1px solid #e3e9ff; border-radius: 4px; padding: 0 4px; word-break: break-all; }
+.settings-copy {
+  display: block; margin-top: 8px; padding: 5px 10px; border-radius: 7px; border: none; cursor: pointer;
+  background: #0649fc; color: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600;
+}
+[data-theme="dark"] .settings-help { background: rgba(6,73,252,.12); border-color: rgba(6,73,252,.3); color: #c7c7cc; }
+[data-theme="dark"] .settings-help code { background: #1c1c1e; border-color: rgba(255,255,255,.1); }
 
 /* ════════════════════════════
    DARK MODE — Variables

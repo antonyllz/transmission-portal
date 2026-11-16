@@ -2,7 +2,7 @@
    SETTINGS
    ═══════════════════════════════ */
 
-var SETTINGS_DEFAULTS = { theme: 'system', tz: 'UTC-3', notify: true, notifyDesktop: false };
+var SETTINGS_DEFAULTS = { theme: 'system', tz: 'UTC-3', notify: true, notifyDesktop: true, notifySound: true, notifyKinds: {} };
 function settingsGet() {
   var s = {};
   try { s = JSON.parse(localStorage.getItem('net_settings') || '{}') || {}; } catch(e) { s = {}; }
@@ -26,6 +26,14 @@ function setTz(tz) {
 function setNotify(on) {
   var s = settingsGet(); s.notify = !!on; settingsSave(s); _renderSettings();
 }
+function setNotifySound(on) {
+  var s = settingsGet(); s.notifySound = !!on; settingsSave(s); _renderSettings();
+  if (on && typeof xcBeep === 'function') xcBeep('down');
+}
+function setNotifyKind(kind, on) {
+  var s = settingsGet(); s.notifyKinds = Object.assign({}, s.notifyKinds); s.notifyKinds[kind] = !!on; settingsSave(s); _renderSettings();
+  if (typeof renderNotifXc === 'function') renderNotifXc();
+}
 function setNotifyDesktop(on) {
   var s = settingsGet();
   if (!on) { s.notifyDesktop = false; settingsSave(s); _renderSettings(); return; }
@@ -38,9 +46,17 @@ function setNotifyDesktop(on) {
     if (p === 'granted') try { new Notification('Transmission Portal', { body: 'Notificações ativadas', icon: 'assets/images/favicon.svg' }); } catch(e) {}
   });
 }
-function _switch(on, fn, disabled) {
+/* clipboard also on plain HTTP (navigator.clipboard needs HTTPS) */
+function _copyText(text, btn) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); btn.textContent = 'Copiado'; } catch(e) { btn.textContent = text; }
+  ta.remove();
+}
+function _switch(on, fn, disabled, arg) {
   return '<button class="set-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + on + '"' + (disabled ? ' disabled' : '')
-    + ' onclick="' + fn + '(' + !on + ')"><i></i></button>';
+    + ' onclick="' + fn + '(' + (arg ? '\'' + arg + '\', ' : '') + !on + ')"><i></i></button>';
 }
 
 /* ── Theme: 'light' | 'dark' | 'system' (follows the OS and updates live) ── */
@@ -71,6 +87,7 @@ var _settingsOpen = false;
 
 function openSettings() {
   _renderSettings();
+  if (typeof xcClearToasts === 'function') xcClearToasts();
   document.getElementById('side-backdrop').classList.add('open');
   document.getElementById('settings-panel').classList.add('open');
   _settingsOpen = true;
@@ -128,7 +145,7 @@ function _renderSettings(desktopMsg) {
       '<div class="settings-section-lbl">Horário</div>' +
       '<div class="settings-row" style="flex-direction:column;align-items:stretch;gap:10px;">' +
         '<div><div class="settings-row-label">Fuso dos horários</div>' +
-        '<div class="settings-row-desc">Usado nas dashboards e notificações (Amazon Leo, cross-connect)</div></div>' +
+        '<div class="settings-row-desc">Usado na dashboard Amazon Leo e nas notificações</div></div>' +
         '<div class="theme-switcher">' +
           '<button class="theme-opt' + (s.tz === 'UTC-3' ? ' active' : '') + '" onclick="setTz(\'UTC-3\')">UTC-3 · Brasília</button>' +
           '<button class="theme-opt' + (s.tz === 'UTC' ? ' active' : '') + '" onclick="setTz(\'UTC\')">UTC</button>' +
@@ -139,14 +156,30 @@ function _renderSettings(desktopMsg) {
       '<div class="settings-section-lbl">Notificações</div>' +
       '<div class="settings-row">' +
         '<div><div class="settings-row-label">Alertas no portal</div>' +
-        '<div class="settings-row-desc">Aviso na tela e no sino quando uma porta do cross-connect cai, volta ou flapa</div></div>' +
+        '<div class="settings-row-desc">Aviso na tela e no sino a cada evento novo na rede (checado a cada 20 s)</div></div>' +
         _switch(s.notify, 'setNotify') +
       '</div>' +
       '<div class="settings-row">' +
-        '<div><div class="settings-row-label">Notificações do sistema</div>' +
-        '<div class="settings-row-desc">' + (desktopMsg ? esc(desktopMsg) : canDesktop ? 'Aparecem mesmo com o portal em outra aba' : 'Disponível só em HTTPS ou localhost') + '</div></div>' +
+        '<div><div class="settings-row-label">Som</div>' +
+        '<div class="settings-row-desc">Bipe curto quando chega um alerta</div></div>' +
+        _switch(s.notifySound !== false, 'setNotifySound', !s.notify) +
+      '</div>' +
+      '<div class="settings-row">' +
+        '<div><div class="settings-row-label">Notificações na área de trabalho</div>' +
+        '<div class="settings-row-desc">' + (desktopMsg ? esc(desktopMsg)
+          : canDesktop ? (Notification.permission === 'denied' ? 'Bloqueadas no navegador: libere em 🔒 → Notificações' : 'Aparecem no Windows mesmo com o portal minimizado (deixe a aba aberta)')
+          : 'O navegador só libera em HTTPS. Veja abaixo como liberar para este endereço.') + '</div></div>' +
         _switch(desktopOn, 'setNotifyDesktop', !s.notify || !canDesktop) +
       '</div>' +
+      (canDesktop ? '' :
+      '<div class="settings-help">No Chrome/Edge, abra <code>' + (/edg\//i.test(navigator.userAgent) ? 'edge' : 'chrome') + '://flags/#unsafely-treat-insecure-origin-as-secure</code>, ' +
+        'coloque <code>' + esc(location.origin) + '</code>, mude para <b>Enabled</b> e reinicie o navegador. Depois ligue a opção acima.' +
+        '<button class="settings-copy" onclick="_copyText(location.origin, this)">Copiar endereço</button></div>') +
+      '<div class="settings-sub-lbl">Avisar sobre</div>' +
+      Object.keys(NOTIFY_KINDS).map(function(k) {
+        return '<div class="settings-row settings-row-sm"><div class="settings-row-label">' + NOTIFY_KINDS[k] + '</div>' +
+          _switch(!s.notifyKinds || s.notifyKinds[k] !== false, 'setNotifyKind', !s.notify, k) + '</div>';
+      }).join('') +
     '</div>';
 }
 

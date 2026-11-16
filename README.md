@@ -80,9 +80,14 @@ SP4 side. Per port: ifOper/AdminStatus, ifHCIn/OutOctets (→ bps), ifHighSpeed,
 ifLastChange + sysUpTime (exact transition time; a flap shorter than the poll is still recorded).
 ifIndex is found by ifName (or ifDescr); each router is polled on its own. Paths are listed in `PATHS`;
 7 days of history in the `ifmon` collection, `GET /api/leo/ifmon?hours=6|24|168`; shown inside the site.
-New transitions (down/up/flap, `GET /api/leo/ifmon/events`) are announced in the whole portal every 20 s:
-toast + bell, and the browser's own notification if enabled in Settings (needs HTTPS or localhost).
-Times follow Settings → Horário (UTC-3 by default, or UTC).
+Port transitions: `GET /api/leo/ifmon/events`.
+
+**Notifications:** `GET /api/notify/feed` (`server/notify.js`) merges every network transition — trechos
+down/normalized, DWDM Padtec, infra Padtec (NMS), Amazon Leo alarms and cross-connect ports — and every
+open portal checks it every 20 s: toast, bell section (unread badge), a short beep and the desktop
+notification. Settings → Notificações turns each one on/off, per kind. Desktop notifications need a
+secure origin: over plain HTTP enable `chrome://flags/#unsafely-treat-insecure-origin-as-secure` for the
+portal address (Settings shows how). Times follow Settings → Horário (UTC-3 by default, or UTC).
 The community comes from env `SNMP_COMMUNITY` or `data/snmp-community.txt` (never committed); every
 router must allow SNMP from the portal server.
 
